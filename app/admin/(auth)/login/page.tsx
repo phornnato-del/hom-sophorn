@@ -1,17 +1,63 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { ArrowRight, Eye, EyeOff, Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { profile } from "@/data/portfolio";
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center text-sm text-white/50">
+          Loading sign in...
+        </main>
+      }
+    >
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage("Authentication is not connected yet.");
+    setMessage("");
+    setIsSubmitting(true);
+
+    const formData = new FormData(event.currentTarget);
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.get("name"),
+          password: formData.get("password"),
+          remember: formData.get("remember") === "on",
+        }),
+      });
+      const result = (await response.json()) as { message?: string };
+
+      if (!response.ok) {
+        setMessage(result.message ?? "Unable to sign in.");
+        return;
+      }
+
+      const next = searchParams.get("next");
+      router.replace(next?.startsWith("/admin") ? next : "/admin");
+      router.refresh();
+    } catch {
+      setMessage("Unable to connect. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -70,15 +116,15 @@ export default function LoginPage() {
 
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="mb-2 block text-sm font-medium text-white/80">
-                Email address
+              <label htmlFor="name" className="mb-2 block text-sm font-medium text-white/80">
+                Name
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
+                id="name"
+                name="name"
+                type="text"
                 autoComplete="username"
-                placeholder="you@example.com"
+                placeholder="Admin name"
                 required
                 className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-lilac/50 focus:ring-2 focus:ring-violet-400/15"
               />
@@ -124,7 +170,7 @@ export default function LoginPage() {
               type="submit"
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-violet-500 to-purple-400 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/35 transition hover:-translate-y-0.5 hover:shadow-violet-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lilac"
             >
-              Sign in <ArrowRight size={17} />
+              {isSubmitting ? "Signing in..." : "Sign in"} <ArrowRight size={17} />
             </button>
             <p role="status" aria-live="polite" className="min-h-5 text-center text-xs text-lilac/80">
               {message}
