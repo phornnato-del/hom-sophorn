@@ -3,12 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { ok, fail } from "@/lib/response";
 import { isPrismaError, getErrorMessage } from "@/lib/errors";
 import { publicUserFields } from "@/lib/validate";
+import { CreateUserBody } from "@/feature/api/admin/type/CreateUserBody";
+import { withImageUrl } from "@/lib/withImageUrl";
 
-type CreateUserBody = {
-  email: string;
-  name?: string;
-  password: string;
-};
 
 export async function GET() {
   try {
@@ -16,7 +13,7 @@ export async function GET() {
       select: publicUserFields,
       orderBy: { createdAt: "desc" },
     });
-    return ok(users, "Users retrieved");
+    return ok(users.map(withImageUrl), "Users retrieved");
   } catch (err: unknown) {
     console.error(err);
     return fail(getErrorMessage(err));
@@ -25,14 +22,23 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { email, name, password } = (await req.json()) as CreateUserBody;
+    const { email, name, password, image } = (await req.json()) as CreateUserBody;
 
     if (!email || !password) {
       return fail("Email and password are required", 400);
     }
 
+    if (image && (typeof image !== "string" )) {
+      return fail("Invalid image pls check the image sent", 400);
+    }
+
     const user = await prisma.user.create({
-      data: { email, name, password: await bcrypt.hash(password, 10) },
+      data: {
+        email,
+        name,
+        image: image || null,
+        password: await bcrypt.hash(password, 10),
+      },
       select: publicUserFields,
     });
 

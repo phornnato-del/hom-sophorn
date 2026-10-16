@@ -9,5 +9,6 @@ export const publicUserFields = {
   email: true,
   name: true,
   role: true,
+  image: true,
   createdAt: true,
 } as const;

@@ -13,6 +13,7 @@ type UpdateUserBody = {
   name?: string;
   password?: string;
   role?: string;
+  image?: string | null; 
 };
 
 export async function GET(_req: Request, { params }: RouteContext) {
@@ -38,10 +39,17 @@ export async function POST(req: Request, { params }: RouteContext) {
     const { id } = await params;
     if (!isObjectId(id)) return fail("Invalid id format", 400);
 
-    const { email, name, password, role } = (await req.json()) as UpdateUserBody;
+    const { email, name, password, role, image } =
+      (await req.json()) as UpdateUserBody;
 
-    if (!email && !name && !password && !role) {
+    if (!email && !name && !password && !role && image === undefined) {
       return fail("Nothing to update", 400);
+    }
+
+    if (image !== undefined && image !== null) {
+      if (typeof image !== "string" || !image.startsWith("https://")) {
+        return fail("Invalid image URL", 400);
+      }
     }
 
     const user = await prisma.user.update({
@@ -50,6 +58,7 @@ export async function POST(req: Request, { params }: RouteContext) {
         ...(email && { email }),
         ...(name && { name }),
         ...(role && { role }),
+        ...(image !== undefined && { image }),
         ...(password && { password: await bcrypt.hash(password, 10) }),
       },
       select: publicUserFields,

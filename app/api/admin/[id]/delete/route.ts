@@ -1,3 +1,4 @@
+import { del } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { ok, fail } from "@/lib/response";
 import { isPrismaError, getErrorMessage } from "@/lib/errors";
@@ -12,7 +13,25 @@ export async function POST(_req: Request, { params }: RouteContext) {
     const { id } = await params;
     if (!isObjectId(id)) return fail("Invalid id format", 400);
 
+    // 1. get the image pathname before deleting
+    const existing = await prisma.user.findUnique({
+      where: { id },
+      select: { image: true },
+    });
+    if (!existing) return fail("User not found", 404);
+
+    // 2. delete the user
     await prisma.user.delete({ where: { id } });
+
+    // 3. delete the image file (don't fail the request if this errors)
+    if (existing.image && !existing.image.startsWith("http")) {
+      try {
+        await del(existing.image);
+      } catch (e) {
+        console.error("Failed to delete blob:", e);
+      }
+    }
+
     return ok(null, "User deleted");
   } catch (err: unknown) {
     console.error(err);
