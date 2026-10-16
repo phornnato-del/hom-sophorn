@@ -24,3 +24,24 @@ model User {
   image     String? 
   createdAt DateTime @default(now())
 }
+
+model Banner {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tag       String?
+  title     String
+  slogan    String?
+  desc      String?
+  link      String
+  name      String
+  image     String 
+  createAt  DateTime @default(now())
+}
+
+model About {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tag       String
+  title     String
+  desc      String
+  Lanuage   String
+  createdAt DateTime @default(now())
+}

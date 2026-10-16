@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ok, fail } from "@/lib/response";
 import { isPrismaError, getErrorMessage } from "@/lib/errors";
 import { publicUserFields } from "@/lib/validate";
-import { CreateUserBody } from "@/feature/api/admin/type/CreateUserBody";
+import { UserRequest } from "@/feature/api/admin/type/Request";
 import { withImageUrl } from "@/lib/withImageUrl";
 
 
@@ -22,7 +22,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { email, name, password, image } = (await req.json()) as CreateUserBody;
+    const { email, name, password, image } = (await req.json()) as UserRequest;
 
     if (!email || !password) {
       return fail("Email and password are required", 400);
