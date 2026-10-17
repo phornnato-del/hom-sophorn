@@ -16,6 +16,21 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Hom Sophorn - Software Engineer & Creative Developer",
   description: "Selected work and digital experiences by Hom Sophorn, a creative developer.",
+  icons: {
+    icon: "/logo.jpg",
+    apple: "/logo.jpg",
+  },
+  openGraph: {
+    title: "Hom Sophorn - Software Engineer & Creative Developer",
+    description: "Selected work and digital experiences by Hom Sophorn, a creative developer.",
+    images: [{ url: "/logo.jpg", alt: "Hom Sophorn logo" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "Hom Sophorn - Software Engineer & Creative Developer",
+    description: "Selected work and digital experiences by Hom Sophorn, a creative developer.",
+    images: [{ url: "/logo.jpg", alt: "Hom Sophorn logo" }],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
