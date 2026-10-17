@@ -1,3 +1,5 @@
+import { startTopLoading } from "@/lib/top-loading";
+
 export type ApiEnvelope<T> = {
   code: number;
   message: string;
@@ -37,23 +39,33 @@ export async function listApi<T>(
   });
   if (filter) params.set("filter", filter);
 
-  const response = await fetch(`${endpoint}?${params.toString()}`, {
-    cache: "no-store",
-    signal,
-  });
-  return readResponse<PaginatedResult<T>>(response);
+  const finishLoading = startTopLoading();
+  try {
+    const response = await fetch(`${endpoint}?${params.toString()}`, {
+      cache: "no-store",
+      signal,
+    });
+    return await readResponse<PaginatedResult<T>>(response);
+  } finally {
+    finishLoading();
+  }
 }
 
 export async function createApi<T, TBody>(
   endpoint: string,
   body: TBody,
 ): Promise<T> {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return readResponse<T>(response);
+  const finishLoading = startTopLoading();
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return await readResponse<T>(response);
+  } finally {
+    finishLoading();
+  }
 }
 
 export async function updateApi<T, TBody>(
@@ -61,20 +73,30 @@ export async function updateApi<T, TBody>(
   id: string,
   body: TBody,
 ): Promise<T> {
-  const response = await fetch(`${endpoint}/${encodeURIComponent(id)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return readResponse<T>(response);
+  const finishLoading = startTopLoading();
+  try {
+    const response = await fetch(`${endpoint}/${encodeURIComponent(id)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return await readResponse<T>(response);
+  } finally {
+    finishLoading();
+  }
 }
 
 export async function deleteApi(endpoint: string, id: string): Promise<void> {
-  const response = await fetch(`${endpoint}/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-  });
-  const body = (await response.json()) as ApiEnvelope<null>;
-  if (!response.ok) {
-    throw new Error(body.message || `Request failed with status ${response.status}`);
+  const finishLoading = startTopLoading();
+  try {
+    const response = await fetch(`${endpoint}/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    const body = (await response.json()) as ApiEnvelope<null>;
+    if (!response.ok) {
+      throw new Error(body.message || `Request failed with status ${response.status}`);
+    }
+  } finally {
+    finishLoading();
   }
 }

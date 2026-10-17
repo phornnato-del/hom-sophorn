@@ -5,6 +5,7 @@ import {
   updateApi,
   type PaginatedResult,
 } from "@/lib/api-service";
+import { startTopLoading } from "@/lib/top-loading";
 
 export type AdminCollectionKey =
   | "admin"
@@ -60,13 +61,18 @@ export async function deleteAdminItem(
   item: AdminCollectionItem,
 ): Promise<void> {
   if (collection === "admin") {
-    const response = await fetch(
-      `${endpoints[collection]}/${encodeURIComponent(item.id)}/delete`,
-      { method: "POST" },
-    );
-    const body = (await response.json()) as { code: number; message: string };
-    if (!response.ok) {
-      throw new Error(body.message || `Request failed with status ${response.status}`);
+    const finishLoading = startTopLoading();
+    try {
+      const response = await fetch(
+        `${endpoints[collection]}/${encodeURIComponent(item.id)}/delete`,
+        { method: "POST" },
+      );
+      const body = (await response.json()) as { code: number; message: string };
+      if (!response.ok) {
+        throw new Error(body.message || `Request failed with status ${response.status}`);
+      }
+    } finally {
+      finishLoading();
     }
     return;
   }
