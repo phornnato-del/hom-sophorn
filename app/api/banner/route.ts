@@ -2,17 +2,38 @@ import { BannerRequest } from "@/feature/api/banner/type/BannerRequest"
 import { getErrorMessage } from "@/lib/errors"
 import { prisma } from "@/lib/prisma"
 import { fail, ok } from "@/lib/response"
+import { paginatedResult, parsePaginationParams } from "@/lib/pagination"
 import { withImageUrl } from "@/lib/withImageUrl"
 
-export async function GET() {
+export async function GET(req: Request) {
     try{
+        const parsed = parsePaginationParams(req.url)
+        if ("error" in parsed) return fail(parsed.error, 400)
+        const { page, pageSize, filter, skip } = parsed.params
+        const where = filter
+            ? { OR: [
+                { name: { contains: filter, mode: "insensitive" as const } },
+                { tag: { contains: filter, mode: "insensitive" as const } },
+                { title: { contains: filter, mode: "insensitive" as const } },
+                { slogan: { contains: filter, mode: "insensitive" as const } },
+                { desc: { contains: filter, mode: "insensitive" as const } },
+                { link: { contains: filter, mode: "insensitive" as const } },
+                { image: { contains: filter, mode: "insensitive" as const } },
+            ] }
+            : {}
 
-        const banner = await prisma.banner.findMany({
-            select: {id: true,name: true, tag: true, title: true, slogan: true, desc: true, link: true, image: true},
-            orderBy: { createAt: "desc" }
-        })
+        const [banner, total] = await Promise.all([
+            prisma.banner.findMany({
+                where,
+                select: {id: true,name: true, tag: true, title: true, slogan: true, desc: true, link: true, image: true},
+                orderBy: { createAt: "desc" },
+                skip,
+                take: pageSize,
+            }),
+            prisma.banner.count({ where }),
+        ])
 
-        return ok(banner.map(withImageUrl), "Banner retrieved")
+        return ok(paginatedResult(banner.map(withImageUrl), total, page, pageSize), "Banner retrieved")
 
     }catch(error: unknown){
         console.error(error)

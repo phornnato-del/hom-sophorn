@@ -63,4 +63,20 @@ export async function POST(req: Request, { params }: RouteContext) {
     return fail(getErrorMessage(err));
   }
 }       
+
+export async function DELETE(_req: Request, { params }: RouteContext) {
+  try {
+    const { id } = await params;
+    if (!isObjectId(id)) return fail("Invalid id format", 400);
+
+    await prisma.banner.delete({ where: { id } });
+    return ok(null, "Banner deleted");
+  } catch (err: unknown) {
+    console.error(err);
+    if (isPrismaError(err) && err.code === "P2025") {
+      return fail("Banner not found", 404);
+    }
+    return fail(getErrorMessage(err));
+  }
+}
      

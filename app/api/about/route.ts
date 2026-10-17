@@ -2,6 +2,7 @@ import { AboutRequest } from "@/feature/api/about/type/AboutReques";
 import { getErrorMessage } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { fail, ok } from "@/lib/response";
+import { paginatedResult, parsePaginationParams } from "@/lib/pagination";
 
 const aboutFields = {
   id: true,
@@ -12,14 +13,33 @@ const aboutFields = {
   createdAt: true,
 } as const;
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const abouts = await prisma.about.findMany({
-      select: aboutFields,
-      orderBy: { createdAt: "desc" },
-    });
+    const parsed = parsePaginationParams(req.url);
+    if ("error" in parsed) return fail(parsed.error, 400);
+    const { page, pageSize, filter, skip } = parsed.params;
+    const where = filter
+      ? {
+          OR: [
+            { tag: { contains: filter, mode: "insensitive" as const } },
+            { title: { contains: filter, mode: "insensitive" as const } },
+            { desc: { contains: filter, mode: "insensitive" as const } },
+            { Lanuage: { contains: filter, mode: "insensitive" as const } },
+          ],
+        }
+      : {};
+    const [abouts, total] = await Promise.all([
+      prisma.about.findMany({
+        where,
+        select: aboutFields,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+      }),
+      prisma.about.count({ where }),
+    ]);
 
-    return ok(abouts, "About retrieved");
+    return ok(paginatedResult(abouts, total, page, pageSize), "About retrieved");
   } catch (error: unknown) {
     console.error(error);
     return fail(getErrorMessage(error));

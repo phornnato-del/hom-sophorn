@@ -2,6 +2,7 @@ import { ContactRequest } from "@/feature/api/contact/type/ContactRequest"
 import { getErrorMessage } from "@/lib/errors"
 import { prisma } from "@/lib/prisma"
 import { fail, ok } from "@/lib/response"
+import { paginatedResult, parsePaginationParams } from "@/lib/pagination"
 
 const contactSelect = {
   id: true,
@@ -9,14 +10,31 @@ const contactSelect = {
   link: true,
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const contacts = await prisma.contact.findMany({
-      select: contactSelect,
-      orderBy: { createdAt: "desc" },
-    })
+    const parsed = parsePaginationParams(req.url)
+    if ("error" in parsed) return fail(parsed.error, 400)
+    const { page, pageSize, filter, skip } = parsed.params
+    const where = filter
+      ? {
+          OR: [
+            { type: { contains: filter, mode: "insensitive" as const } },
+            { link: { contains: filter, mode: "insensitive" as const } },
+          ],
+        }
+      : {}
+    const [contacts, total] = await Promise.all([
+      prisma.contact.findMany({
+        where,
+        select: contactSelect,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+      }),
+      prisma.contact.count({ where }),
+    ])
 
-    return ok(contacts, "Contacts retrieved")
+    return ok(paginatedResult(contacts, total, page, pageSize), "Contacts retrieved")
   } catch (error: unknown) {
     console.error(error)
     return fail(getErrorMessage(error))

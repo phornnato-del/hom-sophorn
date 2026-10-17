@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ok, fail } from "@/lib/response";
 import { isPrismaError, getErrorMessage } from "@/lib/errors";
 import { isObjectId, publicUserFields } from "@/lib/validate";
+import { isAllowedImagePath } from "@/lib/folders";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -47,7 +48,10 @@ export async function POST(req: Request, { params }: RouteContext) {
     }
 
     if (image !== undefined && image !== null) {
-      if (typeof image !== "string" || !image.startsWith("https://")) {
+      if (
+        typeof image !== "string" ||
+        (!image.startsWith("https://") && !isAllowedImagePath(image))
+      ) {
         return fail("Invalid image URL", 400);
       }
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -12,15 +12,23 @@ import {
   Globe2,
   ImagePlus,
   Mail,
-  Plus,
   Save,
-  Trash2,
 } from "lucide-react";
 import { profile, projects as initialProjects } from "@/data/portfolio";
-import type { Project } from "@/data/portfolio";
+import CollectionManager from "@/feature/admin/components/CollectionManager";
 
 type ModuleKey = "dashboard" | "admin" | "hero" | "about" | "projects" | "contact" | "settings";
 type FieldSpec = { key: string; label: string; hint?: string; multiline?: boolean; type?: string };
+
+function subscribeToStorage(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  return () => window.removeEventListener("storage", onStoreChange);
+}
+
+function getLastSavedSnapshot() {
+  const savedAt = window.localStorage.getItem("portfolio-admin-last-saved");
+  return savedAt ? new Date(savedAt).toLocaleString() : "Not published";
+}
 
 const moduleDetails: Record<Exclude<ModuleKey, "dashboard" | "projects">, {
   eyebrow: string;
@@ -110,17 +118,18 @@ const moduleRoutes = [
 
 export default function AdminContent({ moduleKey }: { moduleKey: ModuleKey }) {
   if (moduleKey === "dashboard") return <DashboardOverview />;
-  if (moduleKey === "projects") return <ProjectsEditor />;
+  if (moduleKey !== "settings") {
+    return <CollectionManager key={moduleKey} collection={moduleKey} />;
+  }
   return <ModuleEditor moduleKey={moduleKey} />;
 }
 
 function DashboardOverview() {
-  const [lastSaved, setLastSaved] = useState("Not published");
-
-  useEffect(() => {
-    const savedAt = window.localStorage.getItem("portfolio-admin-last-saved");
-    if (savedAt) setLastSaved(new Date(savedAt).toLocaleString());
-  }, []);
+  const lastSaved = useSyncExternalStore(
+    subscribeToStorage,
+    getLastSavedSnapshot,
+    () => "Not published",
+  );
 
   return (
     <div className="space-y-8">
@@ -233,25 +242,30 @@ function StatCard({ label, value, note, icon: Icon, tone }: {
   );
 }
 
-function ModuleEditor({ moduleKey }: { moduleKey: Exclude<ModuleKey, "dashboard" | "projects"> }) {
+function ModuleEditor({ moduleKey }: { moduleKey: "settings" }) {
   const details = moduleDetails[moduleKey];
-  const [values, setValues] = useState(moduleDefaults[moduleKey]);
+  const storedValues = useSyncExternalStore(
+    subscribeToStorage,
+    () => window.localStorage.getItem(`portfolio-admin:${moduleKey}`) ?? "",
+    () => "",
+  );
+  const [draftValues, setDraftValues] = useState<Record<string, string> | null>(null);
+  let initialValues = moduleDefaults[moduleKey];
+  if (storedValues) {
+    try {
+      initialValues = {
+        ...moduleDefaults[moduleKey],
+        ...JSON.parse(storedValues) as Record<string, string>,
+      };
+    } catch {
+      initialValues = moduleDefaults[moduleKey];
+    }
+  }
+  const values = draftValues ?? initialValues;
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    const savedValues = window.localStorage.getItem(`portfolio-admin:${moduleKey}`);
-    if (savedValues) {
-      try {
-        setValues({ ...moduleDefaults[moduleKey], ...JSON.parse(savedValues) as Record<string, string> });
-      } catch {
-        window.localStorage.removeItem(`portfolio-admin:${moduleKey}`);
-      }
-    }
-    setSaved(false);
-  }, [moduleKey]);
-
   function updateField(key: string, value: string) {
-    setValues((current) => ({ ...current, [key]: value }));
+    setDraftValues((current) => ({ ...(current ?? values), [key]: value }));
     setSaved(false);
   }
 
@@ -259,6 +273,7 @@ function ModuleEditor({ moduleKey }: { moduleKey: Exclude<ModuleKey, "dashboard"
     event.preventDefault();
     window.localStorage.setItem(`portfolio-admin:${moduleKey}`, JSON.stringify(values));
     window.localStorage.setItem("portfolio-admin-last-saved", new Date().toISOString());
+    setDraftValues(values);
     setSaved(true);
   }
 
@@ -312,101 +327,5 @@ function ModuleEditor({ moduleKey }: { moduleKey: Exclude<ModuleKey, "dashboard"
         </div>
       </form>
     </div>
-  );
-}
-
-function ProjectsEditor() {
-  const [items, setItems] = useState<Project[]>(initialProjects);
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem("portfolio-admin:projects");
-    if (stored) {
-      try {
-        setItems(JSON.parse(stored) as Project[]);
-      } catch {
-        window.localStorage.removeItem("portfolio-admin:projects");
-      }
-    }
-  }, []);
-
-  function updateProject(index: number, key: keyof Project, value: string) {
-    setItems((current) => current.map((project, projectIndex) => projectIndex === index
-      ? { ...project, [key]: key === "tags" ? value.split(",").map((tag) => tag.trim()).filter(Boolean) : value }
-      : project));
-    setSaved(false);
-  }
-
-  function addProject() {
-    setItems((current) => [...current, { title: "New project", description: "Add a short project description.", tags: [] }]);
-    setSaved(false);
-  }
-
-  function saveProjects() {
-    window.localStorage.setItem("portfolio-admin:projects", JSON.stringify(items));
-    window.localStorage.setItem("portfolio-admin-last-saved", new Date().toISOString());
-    setSaved(true);
-  }
-
-  return (
-    <div className="space-y-8">
-      <PageHeading eyebrow="Homepage content" title="Projects" description="Organize the work you want visitors to see first." />
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-white/45">{items.length} project{items.length === 1 ? "" : "s"} in this draft</p>
-        <button type="button" onClick={addProject} className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/12 px-4 py-2.5 text-sm font-medium text-white/75 transition hover:border-lilac/30 hover:text-white">
-          <Plus size={16} /> Add project
-        </button>
-      </div>
-      <div className="space-y-4">
-        {items.map((project, index) => (
-          <article key={`${index}-${project.title}`} className="glass rounded-2xl p-5 sm:p-6">
-            <div className="mb-5 flex items-center justify-between border-b border-white/8 pb-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-300/10 text-lilac"><FolderKanban size={17} /></span>
-                <p className="text-sm font-semibold">Project {String(index + 1).padStart(2, "0")}</p>
-              </div>
-              <button type="button" onClick={() => { setItems((current) => current.filter((_, itemIndex) => itemIndex !== index)); setSaved(false); }} aria-label={`Remove ${project.title}`} className="rounded-lg p-2 text-white/35 transition hover:bg-rose-300/10 hover:text-rose-200">
-                <Trash2 size={16} />
-              </button>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <ProjectField label="Project name" value={project.title} onChange={(value) => updateProject(index, "title", value)} />
-              <ProjectField label="Screenshot path" value={project.image ?? ""} placeholder="/projects/project.png" onChange={(value) => updateProject(index, "image", value)} />
-              <div className="md:col-span-2"><ProjectField label="Description" value={project.description} multiline onChange={(value) => updateProject(index, "description", value)} /></div>
-              <ProjectField label="Technologies" value={project.tags.join(", ")} placeholder="Next.js, TypeScript" onChange={(value) => updateProject(index, "tags", value)} />
-              <ProjectField label="Live URL" value={project.live ?? ""} placeholder="https://example.com" onChange={(value) => updateProject(index, "live", value)} />
-              <ProjectField label="Repository URL" value={project.github ?? ""} placeholder="https://github.com/..." onChange={(value) => updateProject(index, "github", value)} />
-            </div>
-          </article>
-        ))}
-      </div>
-      <div className="glass flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <p role="status" className="flex min-h-5 items-center gap-2 text-xs text-white/45">
-          {saved ? <><Check size={14} className="text-emerald-300" /> Draft saved in this browser. Not published.</> : <><CircleHelp size={14} /> Project drafts are local to this browser.</>}
-        </p>
-        <button type="button" onClick={saveProjects} className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-400 px-4 py-2.5 text-sm font-semibold text-[#160e23] transition hover:bg-violet-300">
-          <Save size={16} /> Save projects
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ProjectField({ label, value, placeholder, multiline, onChange }: {
-  label: string;
-  value: string;
-  placeholder?: string;
-  multiline?: boolean;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-xs font-medium text-white/60">{label}</span>
-      {multiline ? (
-        <textarea value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} rows={2} className="w-full resize-y rounded-lg border border-white/10 bg-black/15 px-3 py-2.5 text-sm leading-5 text-white outline-none placeholder:text-white/25 focus:border-lilac/50" />
-      ) : (
-        <input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-white/10 bg-black/15 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-lilac/50" />
-      )}
-    </label>
   );
 }

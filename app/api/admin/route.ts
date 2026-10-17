@@ -5,15 +5,35 @@ import { isPrismaError, getErrorMessage } from "@/lib/errors";
 import { publicUserFields } from "@/lib/validate";
 import { UserRequest } from "@/feature/api/admin/type/Request";
 import { withImageUrl } from "@/lib/withImageUrl";
+import { paginatedResult, parsePaginationParams } from "@/lib/pagination";
+import { isAllowedImagePath } from "@/lib/folders";
 
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const users = await prisma.user.findMany({
-      select: publicUserFields,
-      orderBy: { createdAt: "desc" },
-    });
-    return ok(users.map(withImageUrl), "Users retrieved");
+    const parsed = parsePaginationParams(req.url);
+    if ("error" in parsed) return fail(parsed.error, 400);
+    const { page, pageSize, filter, skip } = parsed.params;
+    const where = filter
+      ? {
+          OR: [
+            { name: { contains: filter, mode: "insensitive" as const } },
+            { email: { contains: filter, mode: "insensitive" as const } },
+            { role: { contains: filter, mode: "insensitive" as const } },
+          ],
+        }
+      : {};
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: publicUserFields,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+      }),
+      prisma.user.count({ where }),
+    ]);
+    return ok(paginatedResult(users.map(withImageUrl), total, page, pageSize), "Users retrieved");
   } catch (err: unknown) {
     console.error(err);
     return fail(getErrorMessage(err));
@@ -28,8 +48,12 @@ export async function POST(req: Request) {
       return fail("Email and password are required", 400);
     }
 
-    if (image && (typeof image !== "string" )) {
-      return fail("Invalid image pls check the image sent", 400);
+    if (
+      image &&
+      (typeof image !== "string" ||
+        (!image.startsWith("https://") && !isAllowedImagePath(image)))
+    ) {
+      return fail("Invalid image path or URL", 400);
     }
 
     const user = await prisma.user.create({
