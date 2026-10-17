@@ -17,6 +17,7 @@ export default function ProjectCard({ project }: { project: Project }) {
             src={project.image}
             alt={`${project.title} project screenshot`}
             fill
+            unoptimized
             sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw"
             className="object-cover transition duration-500 group-hover:scale-[1.03]"
           />
