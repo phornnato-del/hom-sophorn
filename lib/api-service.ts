@@ -68,6 +68,16 @@ export async function createApi<T, TBody>(
   }
 }
 
+export async function getApi<T>(endpoint: string): Promise<T> {
+  const finishLoading = startTopLoading();
+  try {
+    const response = await fetch(endpoint, { cache: "no-store" });
+    return await readResponse<T>(response);
+  } finally {
+    finishLoading();
+  }
+}
+
 export async function updateApi<T, TBody>(
   endpoint: string,
   id: string,

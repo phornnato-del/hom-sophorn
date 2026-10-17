@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowUpRight,
+  CheckCircle2,
   Check,
+  CircleAlert,
   CircleHelp,
   Eye,
   FileText,
@@ -12,10 +15,32 @@ import {
   Globe2,
   ImagePlus,
   Mail,
+  RefreshCw,
   Save,
+  Users,
 } from "lucide-react";
-import { profile, projects as initialProjects } from "@/data/portfolio";
+import { profile } from "@/data/portfolio";
 import CollectionManager from "@/feature/admin/components/CollectionManager";
+import { getApi } from "@/lib/api-service";
+import { imageSrc } from "@/lib/imageSrc";
+
+type DashboardData = {
+  counts: {
+    projects: number;
+    about: number;
+    banners: number;
+    contacts: number;
+    admins: number;
+  };
+  recentProjects: {
+    id: string;
+    title: string;
+    technology: string;
+    image: string;
+    createdAt: string;
+  }[];
+  generatedAt: string;
+};
 
 type ModuleKey = "dashboard" | "admin" | "hero" | "about" | "projects" | "contact" | "settings";
 type FieldSpec = { key: string; label: string; hint?: string; multiline?: boolean; type?: string };
@@ -110,6 +135,7 @@ const moduleDefaults: Record<Exclude<ModuleKey, "dashboard" | "projects">, Recor
 };
 
 const moduleRoutes = [
+  { label: "Admin users", href: "/admin/admin", icon: Users },
   { label: "Hero", href: "/admin/hero", icon: ImagePlus },
   { label: "About me", href: "/admin/about", icon: FileText },
   { label: "Projects", href: "/admin/projects", icon: FolderKanban },
@@ -130,71 +156,160 @@ function DashboardOverview() {
     getLastSavedSnapshot,
     () => "Not published",
   );
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [dashboardError, setDashboardError] = useState("");
+  const [refreshCount, setRefreshCount] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    getApi<DashboardData>("/api/admin/dashboard")
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          setDashboard(data);
+          setDashboardError("");
+        }
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setDashboardError(
+            error instanceof Error ? error.message : "Unable to load dashboard.",
+          );
+        }
+      });
+
+    return () => controller.abort();
+  }, [refreshCount]);
 
   return (
     <div className="space-y-8">
-      <PageHeading
-        eyebrow="Workspace overview"
-        title={`Welcome back, ${profile.name.split(" ")[0]}`}
-        description="Your portfolio workspace at a glance. Pick up where you left off."
-      />
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <PageHeading
+          eyebrow="Workspace overview"
+          title={`Welcome back, ${profile.name.split(" ")[0]}`}
+          description="Your portfolio workspace at a glance. Pick up where you left off."
+          badge="Live overview"
+        />
+        <button
+          type="button"
+          onClick={() => setRefreshCount((current) => current + 1)}
+          className="inline-flex w-fit items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-white/65 transition hover:border-lilac/30 hover:text-white disabled:opacity-40"
+        >
+          <RefreshCw size={14} /> Refresh overview
+        </button>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Projects" value={String(initialProjects.length)} note="In your portfolio" icon={FolderKanban} tone="violet" />
-        <StatCard label="Skills" value={String(profile.skills.length)} note="Listed on your profile" icon={FileText} tone="cyan" />
-        <StatCard label="Contact" value="Ready" note={profile.email} icon={Mail} tone="green" />
-        <StatCard label="Last saved" value="Draft" note={lastSaved} icon={Save} tone="pink" />
+        <StatCard label="Projects" value={dashboard ? String(dashboard.counts.projects) : "—"} note="Saved in database" icon={FolderKanban} tone="violet" />
+        <StatCard label="About entries" value={dashboard ? String(dashboard.counts.about) : "—"} note="Content records" icon={FileText} tone="cyan" />
+        <StatCard label="Hero banners" value={dashboard ? String(dashboard.counts.banners) : "—"} note="Homepage banners" icon={ImagePlus} tone="pink" />
+        <StatCard label="Contact links" value={dashboard ? String(dashboard.counts.contacts) : "—"} note="Published contact methods" icon={Mail} tone="green" />
       </div>
+
+      {dashboardError && (
+        <div role="alert" className="flex flex-col gap-3 rounded-xl border border-rose-200/15 bg-rose-300/5 px-4 py-3 text-sm text-rose-100 sm:flex-row sm:items-center sm:justify-between">
+          <span className="flex items-center gap-2"><CircleAlert size={16} /> {dashboardError}</span>
+          <button type="button" onClick={() => setRefreshCount((current) => current + 1)} className="font-medium text-white underline decoration-white/30 underline-offset-4">Try again</button>
+        </div>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.85fr]">
         <section className="glass overflow-hidden rounded-2xl">
           <div className="flex items-center justify-between border-b border-white/8 px-5 py-4 sm:px-6">
             <div>
-              <h2 className="text-sm font-semibold">Portfolio projects</h2>
-              <p className="mt-1 text-xs text-white/40">A quick view of your project list</p>
+              <h2 className="text-sm font-semibold">Recent projects</h2>
+              <p className="mt-1 text-xs text-white/40">Latest projects saved to your portfolio</p>
             </div>
-            <Link href="/admin/projects" className="text-xs font-medium text-lilac hover:text-white">Manage projects</Link>
+            <Link href="/admin/projects" className="inline-flex items-center gap-1 text-xs font-medium text-lilac hover:text-white">
+              Manage <ArrowUpRight size={14} />
+            </Link>
           </div>
-          <div className="divide-y divide-white/6">
-            {initialProjects.map((project, index) => (
-              <div key={project.title} className="flex items-center gap-4 px-5 py-4 sm:px-6">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/8 bg-white/4 text-lilac">
-                  <FolderKanban size={17} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{project.title}</p>
-                  <p className="mt-1 truncate text-xs text-white/40">{project.tags.join(" · ")}</p>
+          {!dashboard && !dashboardError ? (
+            <div role="status" className="space-y-3 p-5 sm:p-6">
+              {[0, 1, 2].map((row) => (
+                <div key={row} className="flex animate-pulse items-center gap-4">
+                  <span className="h-12 w-16 rounded-lg bg-white/8" />
+                  <span className="flex-1 space-y-2">
+                    <span className="block h-3 w-2/5 rounded bg-white/8" />
+                    <span className="block h-2.5 w-3/5 rounded bg-white/5" />
+                  </span>
                 </div>
-                <span className="hidden text-xs text-white/35 sm:block">0{index + 1}</span>
-                <ArrowUpRight size={15} className="text-white/35" />
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : dashboard?.recentProjects.length ? (
+            <div className="divide-y divide-white/6">
+              {dashboard.recentProjects.map((project) => (
+                <div key={project.id} className="flex items-center gap-4 px-5 py-4 sm:px-6">
+                  <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
+                    <Image src={imageSrc(project.image)} alt="" fill unoptimized sizes="64px" className="object-cover" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{project.title}</p>
+                    <p className="mt-1 truncate text-xs text-white/40">{project.technology}</p>
+                  </div>
+                  <time className="hidden shrink-0 text-xs text-white/35 sm:block" dateTime={project.createdAt}>
+                    {new Date(project.createdAt).toLocaleDateString()}
+                  </time>
+                  <CheckCircle2 size={16} className="shrink-0 text-emerald-200/70" aria-label="Saved" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="px-5 py-8 text-sm text-white/45 sm:px-6">
+              {dashboardError ? "Recent projects are unavailable." : "No projects yet. Add your first project to get started."}
+            </p>
+          )}
         </section>
 
         <section className="glass rounded-2xl p-5 sm:p-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.15em] text-lilac/75">Site status</p>
-              <h2 className="mt-3 text-xl font-semibold">Your portfolio is live</h2>
+              <h2 className="mt-3 text-xl font-semibold">Workspace status</h2>
             </div>
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-300/10 text-emerald-200">
-              <Globe2 size={19} />
+            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+              dashboardError
+                ? "bg-rose-300/10 text-rose-200"
+                : dashboard
+                  ? "bg-emerald-300/10 text-emerald-200"
+                  : "bg-amber-200/10 text-amber-100"
+            }`}>
+              {dashboardError
+                ? <CircleAlert size={19} />
+                : dashboard
+                  ? <Globe2 size={19} />
+                  : <RefreshCw size={19} className="animate-spin" />}
             </span>
           </div>
-          <p className="mt-3 text-sm leading-6 text-white/50">Your public portfolio is available. Admin changes are saved as local drafts until a storage backend is connected.</p>
+          <p className="mt-3 text-sm leading-6 text-white/50">
+            {dashboardError
+              ? "The dashboard could not retrieve the latest workspace data."
+              : dashboard
+                ? `Connected to the portfolio database. ${dashboard.counts.admins} admin account${dashboard.counts.admins === 1 ? "" : "s"} available.`
+                : "Loading live content and database status..."}
+          </p>
           <Link href="/" target="_blank" className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-lilac transition hover:text-white">
             <Eye size={16} /> Preview site <ArrowUpRight size={14} />
           </Link>
           <div className="mt-6 border-t border-white/8 pt-5">
-            <p className="text-xs font-medium text-white/50">Quick edit</p>
+            <p className="text-xs font-medium text-white/50">Manage workspace</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {moduleRoutes.map(({ label, href }) => (
+              {moduleRoutes.map(({ label, href, icon: Icon }) => (
                 <Link key={href} href={href} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/65 transition hover:border-lilac/30 hover:text-white">
+                  <Icon size={13} className="mr-1.5 inline-block" />
                   {label}
                 </Link>
               ))}
             </div>
+            <div className="mt-5 flex items-start gap-2 border-t border-white/8 pt-4 text-xs text-white/40">
+              <Save size={14} className="mt-0.5 shrink-0" />
+              <span>Last browser draft: {lastSaved}</span>
+            </div>
+            {dashboard && (
+              <p className="mt-3 text-[11px] text-white/30">
+                Live data refreshed {new Date(dashboard.generatedAt).toLocaleTimeString()}
+              </p>
+            )}
           </div>
         </section>
       </div>
@@ -202,7 +317,17 @@ function DashboardOverview() {
   );
 }
 
-function PageHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
+function PageHeading({
+  eyebrow,
+  title,
+  description,
+  badge = "Draft workspace",
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  badge?: string;
+}) {
   return (
     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
       <div>
@@ -211,7 +336,7 @@ function PageHeading({ eyebrow, title, description }: { eyebrow: string; title: 
         <p className="mt-2 max-w-2xl text-sm leading-6 text-white/50">{description}</p>
       </div>
       <span className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-200/15 bg-amber-200/5 px-3 py-1.5 text-xs text-amber-100/75">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-200" /> Draft workspace
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-200" /> {badge}
       </span>
     </div>
   );
