@@ -113,8 +113,8 @@ const collections: Record<AdminCollectionKey, {
         label: "Technologies",
         placeholder: "Next.js, TypeScript, Tailwind CSS",
       },
-      { key: "git_link", label: "Repository URL", type: "url" },
-      { key: "live_link", label: "Live URL", type: "url" },
+      { key: "git_link", label: "Repository URL", type: "url", required: false },
+      { key: "live_link", label: "Live URL", type: "url", required: false },
     ],
     columns: [
       { key: "image", label: "Image" },

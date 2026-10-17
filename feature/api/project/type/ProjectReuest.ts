@@ -1,8 +1,8 @@
 export type ProjectRequest = {
-    image: string;
-    title: string;
-    desc: string;
-    technology: string;
-    git_link: string;
-    live_link:string;
+    image?: string;
+    title?: string;
+    desc?: string;
+    technology?: string;
+    git_link?: string | null;
+    live_link?: string | null;
 }

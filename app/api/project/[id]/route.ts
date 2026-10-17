@@ -56,8 +56,8 @@ export async function POST(req: Request, { params }: RouteContext) {
         ...(title && { title }),
         ...(desc && { desc }),
         ...(technology && { technology }),
-        ...(git_link && { git_link }),
-        ...(live_link && { live_link }),
+        ...(git_link !== undefined && { git_link: git_link ?? "" }),
+        ...(live_link !== undefined && { live_link: live_link ?? "" }),
       },
       select: projectSelect,
     })

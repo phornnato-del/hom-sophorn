@@ -55,12 +55,19 @@ export async function POST(req: Request) {
     const { image, title, desc, technology, git_link, live_link } =
       (await req.json()) as ProjectRequest
 
-    if (!image || !title || !desc || !technology || !git_link || !live_link) {
-      return fail("All fields are required", 400)
+    if (!image || !title || !desc || !technology) {
+      return fail("Image, title, description, and technologies are required", 400)
     }
 
     const project = await prisma.project.create({
-      data: { image, title, desc, technology, git_link, live_link },
+      data: {
+        image,
+        title,
+        desc,
+        technology,
+        git_link: git_link ?? "",
+        live_link: live_link ?? "",
+      },
       select: projectSelect,
     })
 
