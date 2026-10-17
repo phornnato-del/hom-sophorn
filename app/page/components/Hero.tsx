@@ -30,11 +30,21 @@ function getBannerHref(link?: string) {
   }
 }
 
+function isGitHubLink(link: string) {
+  try {
+    const hostname = new URL(link).hostname.toLowerCase();
+    return hostname === "github.com" || hostname.endsWith(".github.com");
+  } catch {
+    return false;
+  }
+}
+
 export default function Hero() {
   const [i, setI] = useState(0);
   const { items: banners, error } = usePublicCollection<Banner>("/api/banner");
   const banner = banners[0];
   const bannerHref = getBannerHref(banner?.link);
+  const bannerLinksToGitHub = isGitHubLink(bannerHref);
   const bannerRoles = (banner?.slogan ?? "")
     .split(",")
     .map((role) => role.trim())
@@ -109,15 +119,11 @@ export default function Hero() {
             rel={bannerHref.startsWith("http") ? "noreferrer" : undefined}
             className="flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-400 px-7 py-3 font-semibold text-white shadow-lg shadow-violet-950/50 transition hover:-translate-y-0.5 hover:shadow-violet-500/25"
           >
-            Explore my work <ArrowDown size={18} />
-          </a>
-          <a
-            href={profile.socials.github}
-            target="_blank"
-            rel="noreferrer"
-            className="glass flex items-center gap-2 rounded-full px-7 py-3 font-semibold transition hover:border-lilac/40 hover:bg-white/10"
-          >
-            <GitBranchPlusIcon size={18} /> GitHub
+            {bannerLinksToGitHub ? (
+              <>Visit my GitHub <GitBranchPlusIcon size={18} /></>
+            ) : (
+              <>Explore my work <ArrowDown size={18} /></>
+            )}
           </a>
         </motion.div>
 
