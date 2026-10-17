@@ -45,3 +45,21 @@ model About {
   Lanuage   String
   createdAt DateTime @default(now())
 }
+
+model Project {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  image     String
+  title     String 
+  desc      String
+  technology  String 
+  git_link   String
+  live_link  String
+  createdAt DateTime @default(now())
+}
+
+model Contact {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  type      String
+  link      String
+  createdAt DateTime @default(now())
+}

@@ -1,6 +1,6 @@
 export const ALLOWED_FOLDERS = [
   "avatars",
-  "products",
+  "projects",
   "banners",
   "documents",
   "categories",
