@@ -82,11 +82,12 @@ export async function updateApi<T, TBody>(
   endpoint: string,
   id: string,
   body: TBody,
+  method: "PATCH" | "POST" = "POST",
 ): Promise<T> {
   const finishLoading = startTopLoading();
   try {
     const response = await fetch(`${endpoint}/${encodeURIComponent(id)}`, {
-      method: "POST",
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });

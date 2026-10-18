@@ -9,6 +9,7 @@ import {
   Check,
   CircleAlert,
   CircleHelp,
+  ClipboardList,
   Eye,
   FileText,
   FolderKanban,
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 import { profile } from "@/data/portfolio";
 import CollectionManager from "@/feature/admin/components/CollectionManager";
+import TaskManager from "@/feature/admin/components/TaskManager";
 import { getApi } from "@/lib/api-service";
 import { imageSrc } from "@/lib/imageSrc";
 
@@ -31,6 +33,7 @@ type DashboardData = {
     banners: number;
     contacts: number;
     admins: number;
+    tasks: number;
   };
   recentProjects: {
     id: string;
@@ -42,7 +45,7 @@ type DashboardData = {
   generatedAt: string;
 };
 
-type ModuleKey = "dashboard" | "admin" | "hero" | "about" | "projects" | "contact" | "settings";
+type ModuleKey = "dashboard" | "admin" | "hero" | "about" | "projects" | "tasks" | "contact" | "settings";
 type FieldSpec = { key: string; label: string; hint?: string; multiline?: boolean; type?: string };
 
 function subscribeToStorage(onStoreChange: () => void) {
@@ -55,7 +58,7 @@ function getLastSavedSnapshot() {
   return savedAt ? new Date(savedAt).toLocaleString() : "Not published";
 }
 
-const moduleDetails: Record<Exclude<ModuleKey, "dashboard" | "projects">, {
+const moduleDetails: Record<Exclude<ModuleKey, "dashboard" | "projects" | "tasks">, {
   eyebrow: string;
   title: string;
   description: string;
@@ -113,7 +116,7 @@ const moduleDetails: Record<Exclude<ModuleKey, "dashboard" | "projects">, {
   },
 };
 
-const moduleDefaults: Record<Exclude<ModuleKey, "dashboard" | "projects">, Record<string, string>> = {
+const moduleDefaults: Record<Exclude<ModuleKey, "dashboard" | "projects" | "tasks">, Record<string, string>> = {
   admin: { name: profile.name, email: profile.email, role: profile.roles[0] ?? "Administrator" },
   hero: {
     headline: "Designing and building digital things",
@@ -139,11 +142,13 @@ const moduleRoutes = [
   { label: "Hero", href: "/admin/hero", icon: ImagePlus },
   { label: "About me", href: "/admin/about", icon: FileText },
   { label: "Projects", href: "/admin/projects", icon: FolderKanban },
+  { label: "Tasks", href: "/admin/tasks", icon: ClipboardList },
   { label: "Contact me", href: "/admin/contact", icon: Mail },
 ];
 
 export default function AdminContent({ moduleKey }: { moduleKey: ModuleKey }) {
   if (moduleKey === "dashboard") return <DashboardOverview />;
+  if (moduleKey === "tasks") return <TaskManager />;
   if (moduleKey !== "settings") {
     return <CollectionManager key={moduleKey} collection={moduleKey} />;
   }
@@ -199,11 +204,14 @@ function DashboardOverview() {
         </button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Projects" value={dashboard ? String(dashboard.counts.projects) : "—"} note="Saved in database" icon={FolderKanban} tone="violet" />
         <StatCard label="About entries" value={dashboard ? String(dashboard.counts.about) : "—"} note="Content records" icon={FileText} tone="cyan" />
         <StatCard label="Hero banners" value={dashboard ? String(dashboard.counts.banners) : "—"} note="Homepage banners" icon={ImagePlus} tone="pink" />
         <StatCard label="Contact links" value={dashboard ? String(dashboard.counts.contacts) : "—"} note="Published contact methods" icon={Mail} tone="green" />
+        <Link href="/admin/tasks" className="rounded-2xl transition hover:-translate-y-0.5">
+          <StatCard label="Tasks" value={dashboard ? String(dashboard.counts.tasks) : "—"} note="Open task manager" icon={ClipboardList} tone="violet" />
+        </Link>
       </div>
 
       {dashboardError && (

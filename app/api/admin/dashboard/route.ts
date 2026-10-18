@@ -5,13 +5,14 @@ import { withImageUrl } from "@/lib/withImageUrl";
 
 export async function GET() {
   try {
-    const [projects, about, banners, contacts, admins, recentProjects] =
+    const [projects, about, banners, contacts, admins, tasks, recentProjects] =
       await Promise.all([
         prisma.project.count(),
         prisma.about.count(),
         prisma.banner.count(),
         prisma.contact.count(),
         prisma.user.count({ where: { role: "admin" } }),
+        prisma.task.count({ where: { status: { not: "Done" } } }),
         prisma.project.findMany({
           select: {
             id: true,
@@ -27,7 +28,7 @@ export async function GET() {
 
     return ok(
       {
-        counts: { projects, about, banners, contacts, admins },
+        counts: { projects, about, banners, contacts, admins, tasks },
         recentProjects: recentProjects.map(withImageUrl),
         generatedAt: new Date().toISOString(),
       },

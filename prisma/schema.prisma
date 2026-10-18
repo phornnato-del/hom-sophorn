@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,27 +13,27 @@ model Photo {
   imageUrl  String
   createdAt DateTime @default(now())
 }
- 
+
 model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   @unique
   name      String?
   password  String
   role      String   @default("admin")
-  image     String? 
+  image     String?
   createdAt DateTime @default(now())
 }
 
 model Banner {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  tag       String?
-  title     String
-  slogan    String?
-  desc      String?
-  link      String
-  name      String
-  image     String 
-  createAt  DateTime @default(now())
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tag      String?
+  title    String
+  slogan   String?
+  desc     String?
+  link     String
+  name     String
+  image    String
+  createAt DateTime @default(now())
 }
 
 model About {
@@ -47,14 +46,14 @@ model About {
 }
 
 model Project {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  image     String
-  title     String 
-  desc      String
-  technology  String 
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  image      String
+  title      String
+  desc       String
+  technology String
   git_link   String
   live_link  String
-  createdAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 }
 
 model Contact {
@@ -62,4 +61,30 @@ model Contact {
   type      String
   link      String
   createdAt DateTime @default(now())
+}
+
+model Task {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  title        String
+  category     String
+  priority     String   @default("Medium")
+  status       String   @default("To Do")
+  startDate    String
+  deadline     String
+  remindDays   Int[]    @default([])
+  reminderTime String   @default("08:00")
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model TaskReminderDelivery {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  taskId             String   @db.ObjectId
+  scheduledDate      String
+  reminderDaysBefore Int
+  sentAt             DateTime?
+
+  @@unique([taskId, scheduledDate, reminderDaysBefore])
+  @@index([scheduledDate])
 }

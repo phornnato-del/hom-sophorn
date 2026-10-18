@@ -56,6 +56,28 @@ export function updateAdminItem(
   );
 }
 
+export function listTasks(
+  options: { page: number; pageSize: number; filter: string; signal?: AbortSignal },
+) {
+  return listApi<AdminTask>("/api/admin/tasks", options);
+}
+
+export type AdminTask = {
+  id: string;
+  title: string;
+  category: string;
+  priority: "High" | "Medium" | "Low";
+  status: "To Do" | "In Progress" | "Done";
+  startDate: string;
+  deadline: string;
+  daysLeft: number;
+  remindDays: number[];
+  reminderTime: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export async function deleteAdminItem(
   collection: AdminCollectionKey,
   item: AdminCollectionItem,

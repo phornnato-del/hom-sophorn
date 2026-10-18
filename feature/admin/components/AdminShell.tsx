@@ -8,6 +8,7 @@ import {
   AtSign,
   ChevronLeft,
   CircleUserRound,
+  ClipboardList,
   FolderKanban,
   LayoutDashboard,
   Menu,
@@ -25,6 +26,7 @@ const navigation = [
   { label: "Hero", href: "/admin/hero", icon: PanelTop },
   { label: "About me", href: "/admin/about", icon: AlignLeft },
   { label: "Projects", href: "/admin/projects", icon: FolderKanban },
+  { label: "Tasks", href: "/admin/tasks", icon: ClipboardList },
   { label: "Contact me", href: "/admin/contact", icon: MessageSquareText },
   { label: "Settings", href: "/admin/settings", icon: Settings2 },
 ];
