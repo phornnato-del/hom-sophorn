@@ -59,19 +59,52 @@ function getTelegramConfiguration() {
 }
 
 async function sendTelegramReminder(
-  task: { title: string; category: string; deadline: string; notes: string | null },
+  task: {
+    title: string;
+    category: string;
+    priority: string;
+    status: string;
+    startDate: string;
+    deadline: string;
+    reminderTime: string;
+    notes: string | null;
+  },
   reminderDaysBefore: number,
   { token, chatId, threadId }: TelegramConfiguration,
 ) {
   const dueLabel = reminderDaysBefore === 0
     ? "Due today"
-    : `Due in ${reminderDaysBefore} day${reminderDaysBefore === 1 ? "" : "s"}`;
+    : `${reminderDaysBefore} day${reminderDaysBefore === 1 ? "" : "s"} left`;
+  const deadlineDate = new Date(`${task.deadline}T00:00:00.000Z`);
+  const formattedDeadline = deadlineDate.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  const [hours, minutes] = task.reminderTime.split(":").map(Number);
+  const formattedReminderTime = new Date(Date.UTC(2000, 0, 1, hours, minutes))
+    .toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "UTC",
+    });
+  const nudge = reminderDaysBefore === 0
+    ? "Deadline day—pick one small next step and get it done. You’ve got this!"
+    : "A little head start goes a long way. You’ve got this!";
   const text = [
-    `<b>Task reminder: ${escapeHtml(task.title)}</b>`,
-    `${escapeHtml(dueLabel)} — ${escapeHtml(task.deadline)}`,
-    `Category: ${escapeHtml(task.category)}`,
-    task.notes ? `Notes: ${escapeHtml(task.notes)}` : "",
-  ].filter(Boolean).join("\n");
+    `✨ <b>Task check-in: ${escapeHtml(task.title)}</b>`,
+    "",
+    `📅 <b>${escapeHtml(dueLabel)}</b> · ${escapeHtml(formattedDeadline)}`,
+    `🗓 Started: ${escapeHtml(task.startDate)} · Reminder: ${escapeHtml(formattedReminderTime)}`,
+    `🏷 Category: ${escapeHtml(task.category)}`,
+    `⚡ Priority: ${escapeHtml(task.priority)} · 📌 Status: ${escapeHtml(task.status)}`,
+    ...(task.notes ? [`📝 Notes: ${escapeHtml(task.notes)}`] : []),
+    "",
+    `💡 <i>${escapeHtml(nudge)}</i>`,
+  ].join("\n");
 
   let response: Response;
   try {
