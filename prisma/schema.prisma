@@ -85,6 +85,6 @@ model TaskReminderDelivery {
   reminderDaysBefore Int
   sentAt             DateTime?
 
-  @@unique([taskId, scheduledDate, reminderDaysBefore])
+  @@unique([taskId, scheduledDate])
   @@index([scheduledDate])
 }

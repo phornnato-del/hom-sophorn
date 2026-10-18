@@ -3,7 +3,13 @@ const schedulerGlobal = globalThis as typeof globalThis & {
 };
 
 export async function register() {
-  if (process.env.NODE_ENV !== "development" || process.env.NEXT_RUNTIME !== "nodejs") {
+  if (process.env.NEXT_RUNTIME !== "nodejs") {
+    return;
+  }
+  if (process.env.VERCEL === "1") {
+    console.info(
+      "[task reminders] In-process scheduler is disabled on Vercel serverless. Run this app on an always-on Node.js server to send reminders at their selected times.",
+    );
     return;
   }
   if (schedulerGlobal.taskReminderSchedulerStarted) return;
@@ -31,5 +37,5 @@ export async function register() {
 
   void checkReminders();
   setInterval(() => void checkReminders(), 60_000);
-  console.info("[task reminders] Local development scheduler started (checks every minute)");
+  console.info("[task reminders] Scheduler started (checks every minute)");
 }
