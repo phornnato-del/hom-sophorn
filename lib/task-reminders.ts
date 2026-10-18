@@ -98,7 +98,7 @@ async function sendTelegramReminder(
     `✨ <b>Task check-in: ${escapeHtml(task.title)}</b>`,
     "",
     `📅 <b>${escapeHtml(dueLabel)}</b> · ${escapeHtml(formattedDeadline)}`,
-    `🗓 Started: ${escapeHtml(task.startDate)} · Reminder: ${escapeHtml(formattedReminderTime)}`,
+    `🗓 Started: ${escapeHtml(task.startDate)} · Preferred reminder: ${escapeHtml(formattedReminderTime)}`,
     `🏷 Category: ${escapeHtml(task.category)}`,
     `⚡ Priority: ${escapeHtml(task.priority)} · 📌 Status: ${escapeHtml(task.status)}`,
     ...(task.notes ? [`📝 Notes: ${escapeHtml(task.notes)}`] : []),
@@ -129,7 +129,11 @@ async function sendTelegramReminder(
   }
 }
 
-export async function dispatchTaskReminders(now = new Date()) {
+export async function dispatchTaskReminders(
+  now = new Date(),
+  options: { honorReminderTime?: boolean } = {},
+) {
+  const honorReminderTime = options.honorReminderTime ?? true;
   const telegramConfiguration = getTelegramConfiguration();
   const { date, time } = getLocalDateTime(now);
   const tasks = await prisma.task.findMany({
@@ -139,7 +143,7 @@ export async function dispatchTaskReminders(now = new Date()) {
   let failed = 0;
 
   for (const task of tasks) {
-    if (task.reminderTime > time) continue;
+    if (honorReminderTime && task.reminderTime > time) continue;
 
     const reminderDaysBefore = task.remindDays.find(
       (days) => daysBetweenDates(date, task.deadline) === days,
