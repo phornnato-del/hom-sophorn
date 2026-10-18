@@ -8,7 +8,7 @@ export async function register() {
   }
   if (process.env.VERCEL === "1") {
     console.info(
-      "[task reminders] In-process scheduler is disabled on Vercel serverless. Run this app on an always-on Node.js server to send reminders at their selected times.",
+      "[task reminders] In-process scheduler is disabled on Vercel; configure Vercel Cron to call /api/cron/remind.",
     );
     return;
   }

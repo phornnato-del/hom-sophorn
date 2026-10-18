@@ -13,6 +13,24 @@ type TelegramConfiguration = {
   threadId: string | undefined;
 };
 
+type ReminderTask = {
+  id: string;
+  title: string;
+  category: string;
+  priority: string;
+  status: string;
+  startDate: string;
+  deadline: string;
+  remindDays: number[];
+  reminderTime: string;
+  notes: string | null;
+};
+
+type DueReminder = {
+  task: ReminderTask;
+  daysUntilDeadline: number;
+};
+
 function getLocalDateTime(date = new Date()): LocalDateTime {
   const timeZone = process.env.TASK_REMINDER_TIMEZONE || "Asia/Phnom_Penh";
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -56,6 +74,58 @@ function getTelegramConfiguration() {
     throw new Error("THREAD_ID must be a numeric Telegram message thread ID");
   }
   return { token, chatId, threadId };
+}
+
+export function dueReminders(tasks: ReminderTask[], now = new Date()): DueReminder[] {
+  const { date, time } = getLocalDateTime(now);
+
+  return tasks.flatMap((task) => {
+    if (task.status === "Done" || task.reminderTime > time) return [];
+
+    const daysUntilDeadline = daysBetweenDates(date, task.deadline);
+    if (daysUntilDeadline > 0 && !task.remindDays.includes(daysUntilDeadline)) return [];
+    if (daysUntilDeadline === 0 && !task.remindDays.includes(0)) return [];
+
+    return [{ task, daysUntilDeadline }];
+  });
+}
+
+function formatReminderEntry({ task, daysUntilDeadline }: DueReminder) {
+  const label = daysUntilDeadline < 0
+    ? `🔴 OVERDUE ${Math.abs(daysUntilDeadline)}d`
+    : daysUntilDeadline === 0
+      ? "🚨 TODAY"
+      : `⏰ ${daysUntilDeadline} days left`;
+  return `${label}: ${escapeHtml(task.title)} [${escapeHtml(task.priority)}]`;
+}
+
+async function sendTelegramMessage(text: string, configuration: TelegramConfiguration) {
+  const { token, chatId, threadId } = configuration;
+  if (text.length > 4096) {
+    throw new Error("Telegram reminder digest exceeds the 4096-character message limit");
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "HTML",
+        ...(threadId ? { message_thread_id: Number(threadId) } : {}),
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    throw new Error("Telegram sendMessage request could not be completed");
+  }
+
+  const result: unknown = await response.json();
+  if (!response.ok || !result || typeof result !== "object" || !("ok" in result) || result.ok !== true) {
+    throw new Error("Telegram sendMessage request failed");
+  }
 }
 
 async function sendTelegramReminder(
@@ -106,26 +176,93 @@ async function sendTelegramReminder(
     `💡 <i>${escapeHtml(nudge)}</i>`,
   ].join("\n");
 
-  let response: Response;
+  await sendTelegramMessage(text, { token, chatId, threadId });
+}
+
+export async function dispatchTaskReminderDigest(now = new Date()) {
+  const telegramConfiguration = getTelegramConfiguration();
+  const { date, time } = getLocalDateTime(now);
+  const tasks = await prisma.task.findMany({
+    where: { status: { not: "Done" } },
+  });
+  const due = dueReminders(tasks, now);
+  const deliveries: { id: string; task: ReminderTask; daysUntilDeadline: number }[] = [];
+
   try {
-    response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "HTML",
-        ...(threadId ? { message_thread_id: Number(threadId) } : {}),
-      }),
-      signal: AbortSignal.timeout(10_000),
-    });
-  } catch {
-    throw new Error("Telegram sendMessage request could not be completed");
+    for (const reminder of due) {
+      try {
+        const delivery = await prisma.taskReminderDelivery.create({
+          data: {
+            taskId: reminder.task.id,
+            scheduledDate: date,
+            reminderDaysBefore: reminder.daysUntilDeadline,
+          },
+          select: { id: true },
+        });
+        deliveries.push({ ...reminder, id: delivery.id });
+      } catch (error: unknown) {
+        if (isPrismaError(error) && error.code === "P2002") continue;
+        throw error;
+      }
+    }
+  } catch (error: unknown) {
+    await releaseReminderDeliveries(deliveries.map(({ id }) => id));
+    throw error;
   }
 
-  const result: unknown = await response.json();
-  if (!response.ok || !result || typeof result !== "object" || !("ok" in result) || result.ok !== true) {
-    throw new Error("Telegram sendMessage request failed");
+  if (deliveries.length === 0) {
+    return { checked: tasks.length, due: 0, sent: 0, date, time };
+  }
+
+  const text = [
+    "📋 <b>Task reminders</b>",
+    ...deliveries.map(formatReminderEntry),
+  ].join("\n");
+
+  try {
+    await sendTelegramMessage(text, telegramConfiguration);
+  } catch (error: unknown) {
+    await releaseReminderDeliveries(deliveries.map(({ id }) => id));
+    throw error;
+  }
+
+  let updated;
+  try {
+    updated = await prisma.taskReminderDelivery.updateMany({
+      where: { id: { in: deliveries.map(({ id }) => id) } },
+      data: { sentAt: now },
+    });
+  } catch (error: unknown) {
+    await releasePendingReminderDeliveries(deliveries.map(({ id }) => id));
+    throw error;
+  }
+  if (updated.count !== deliveries.length) {
+    await releasePendingReminderDeliveries(deliveries.map(({ id }) => id));
+    throw new Error("Telegram digest was sent, but not all reminder deliveries were marked as sent");
+  }
+
+  return { checked: tasks.length, due: deliveries.length, sent: deliveries.length, date, time };
+}
+
+async function releaseReminderDeliveries(ids: string[]) {
+  if (ids.length === 0) return;
+
+  try {
+    await prisma.taskReminderDelivery.deleteMany({ where: { id: { in: ids } } });
+  } catch (error: unknown) {
+    console.error("Could not release unsent task reminder deliveries:", error);
+  }
+}
+
+async function releasePendingReminderDeliveries(ids: string[]) {
+  if (ids.length === 0) return;
+
+  try {
+    await prisma.taskReminderDelivery.deleteMany({
+      where: { id: { in: ids }, sentAt: null },
+    });
+  } catch (error: unknown) {
+    console.error("Could not release unmarked task reminder deliveries:", error);
   }
 }
 
