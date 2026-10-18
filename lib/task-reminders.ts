@@ -150,6 +150,12 @@ export async function dispatchTaskReminders(
     );
     if (reminderDaysBefore === undefined) continue;
 
+    const existingDelivery = await prisma.taskReminderDelivery.findFirst({
+      where: { taskId: task.id, scheduledDate: date },
+      select: { id: true },
+    });
+    if (existingDelivery) continue;
+
     let delivery;
     try {
       delivery = await prisma.taskReminderDelivery.create({
