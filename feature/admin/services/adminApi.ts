@@ -6,6 +6,7 @@ import {
   type PaginatedResult,
 } from "@/lib/api-service";
 import { startTopLoading } from "@/lib/top-loading";
+import { encryptedFetch } from "@/lib/encrypted-fetch";
 
 export type AdminCollectionKey =
   | "admin"
@@ -85,7 +86,7 @@ export async function deleteAdminItem(
   if (collection === "admin") {
     const finishLoading = startTopLoading();
     try {
-      const response = await fetch(
+      const response = await encryptedFetch(
         `${endpoints[collection]}/${encodeURIComponent(item.id)}/delete`,
         { method: "POST" },
       );

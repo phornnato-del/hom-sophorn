@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
+import EncryptedImage from "@/shared/ui/EncryptedImage";
 import { ArrowDown, ArrowUpRight, GitBranchPlusIcon, Sparkles, UserRound } from "lucide-react";
 import { profile } from "@/data/portfolio";
 import { imageSrc } from "@/lib/imageSrc";
@@ -147,7 +147,7 @@ export default function Hero() {
           <div className="glass relative aspect-[4/5] overflow-hidden rounded-[2rem] p-3">
             <div className="relative flex h-full items-center justify-center overflow-hidden rounded-[1.5rem] border border-white/10 bg-[linear-gradient(145deg,rgba(159,116,235,0.25),rgba(31,20,49,0.8)_58%,rgba(230,166,255,0.12))]">
               {banner?.image || profile.image ? (
-                <Image
+                <EncryptedImage
                   src={imageSrc(banner?.image || profile.image)}
                   alt={banner?.name || `${profile.name} portrait`}
                   fill

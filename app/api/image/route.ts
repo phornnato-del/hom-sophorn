@@ -1,8 +1,9 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import { ALLOWED_FOLDERS } from "@/lib/folders";
 import { get } from "@vercel/blob";
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
+async function getHandler(req: Request) {
   const pathname = new URL(req.url).searchParams.get("pathname");
   const folder = pathname?.split("/")[0];
 
@@ -33,3 +34,5 @@ export async function GET(req: Request) {
     return new NextResponse("Error", { status: 500 });
   }
 }
+
+export const GET = withApiEncryption(getHandler);

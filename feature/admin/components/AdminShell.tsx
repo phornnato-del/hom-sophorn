@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import EncryptedImage from "@/shared/ui/EncryptedImage";
 import { usePathname, useRouter } from "next/navigation";
 import {
   AlignLeft,
@@ -21,6 +21,7 @@ import {
 import type { ReactNode } from "react";
 import { profile } from "@/data/portfolio";
 import { getApi } from "@/lib/api-service";
+import { encryptedFetch } from "@/lib/encrypted-fetch";
 
 const navigation = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -52,7 +53,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     setLogoutError("");
 
     try {
-      const response = await fetch("/api/admin/login", { method: "DELETE" });
+      const response = await encryptedFetch("/api/admin/login", { method: "DELETE" });
       if (!response.ok) {
         throw new Error("Unable to sign out. Please try again.");
       }
@@ -103,7 +104,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           <Link href="/admin" className="flex items-center gap-3">
             <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br from-violet-400 to-fuchsia-400 text-sm font-bold text-[#170d28]">
               {adminProfile?.imageUrl ? (
-                <Image
+                <EncryptedImage
                   src={adminProfile.imageUrl}
                   alt={`${displayName} profile photo`}
                   fill
@@ -160,7 +161,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-3">
             <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-violet-300/15 text-xs font-semibold text-lilac">
               {adminProfile?.imageUrl ? (
-                <Image
+                <EncryptedImage
                   src={adminProfile.imageUrl}
                   alt={`${displayName} profile photo`}
                   fill

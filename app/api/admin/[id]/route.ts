@@ -1,3 +1,4 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { ok, fail } from "@/lib/response";
@@ -17,7 +18,7 @@ type UpdateUserBody = {
   image?: string | null; 
 };
 
-export async function GET(_req: Request, { params }: RouteContext) {
+async function getHandler(_req: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
     if (!isObjectId(id)) return fail("Invalid id format", 400);
@@ -35,7 +36,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
   }
 }
 
-export async function POST(req: Request, { params }: RouteContext) {
+async function postHandler(req: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
     if (!isObjectId(id)) return fail("Invalid id format", 400);
@@ -78,3 +79,6 @@ export async function POST(req: Request, { params }: RouteContext) {
     return fail(getErrorMessage(err));
   }
 }
+
+export const GET = withApiEncryption(getHandler);
+export const POST = withApiEncryption(postHandler);

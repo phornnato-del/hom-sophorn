@@ -1,9 +1,10 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import { getErrorMessage } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { fail, ok } from "@/lib/response";
 import { withImageUrl } from "@/lib/withImageUrl";
 
-export async function GET() {
+async function getHandler() {
   try {
     const [projects, about, banners, contacts, admins, tasks, recentProjects] =
       await Promise.all([
@@ -39,3 +40,5 @@ export async function GET() {
     return fail(getErrorMessage(error));
   }
 }
+
+export const GET = withApiEncryption(getHandler);

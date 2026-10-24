@@ -1,5 +1,5 @@
 "use client";
-import Image from "next/image";
+import EncryptedImage from "@/shared/ui/EncryptedImage";
 import { motion } from "framer-motion";
 import { ExternalLink, GitBranchIcon, ImageIcon } from "lucide-react";
 import type { Project } from "@/data/portfolio";
@@ -13,7 +13,7 @@ export default function ProjectCard({ project }: { project: Project }) {
     >
       <div className="relative -mx-6 -mt-6 mb-5 aspect-16/10 overflow-hidden border-b border-white/10 bg-[linear-gradient(145deg,rgba(145,96,220,0.24),rgba(24,17,38,0.95)_68%,rgba(230,166,255,0.12))]">
         {project.image ? (
-          <Image
+          <EncryptedImage
             src={project.image}
             alt={`${project.title} project screenshot`}
             fill

@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import EncryptedImage from "@/shared/ui/EncryptedImage";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import {
@@ -25,6 +25,7 @@ import {
 } from "@/feature/admin/services/adminApi";
 import { uploadImage } from "@/lib/uploadImage";
 import { imageSrc } from "@/lib/imageSrc";
+import { encryptedFetch } from "@/lib/encrypted-fetch";
 
 type CollectionField = {
   key: string;
@@ -326,7 +327,7 @@ export default function CollectionManager({
     setMfaError("");
     setActionError("");
     try {
-      const response = await fetch(`/api/admin/${encodeURIComponent(item.id)}/mfa`, {
+      const response = await encryptedFetch(`/api/admin/${encodeURIComponent(item.id)}/mfa`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -356,7 +357,7 @@ export default function CollectionManager({
     setMfaSaving(true);
     setMfaError("");
     try {
-      const response = await fetch(`/api/admin/${encodeURIComponent(mfaSetup.id)}/mfa`, {
+      const response = await encryptedFetch(`/api/admin/${encodeURIComponent(mfaSetup.id)}/mfa`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "verify", code: mfaCode }),
@@ -419,7 +420,7 @@ export default function CollectionManager({
                     <span className="flex flex-col gap-4 rounded-xl border border-dashed border-white/15 bg-black/10 p-4 sm:flex-row sm:items-center">
                       {imagePreview ? (
                         <span className="relative h-24 w-32 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/20">
-                          <Image
+                          <EncryptedImage
                             src={imagePreview}
                             alt={`${field.label} preview`}
                             fill
@@ -556,7 +557,7 @@ export default function CollectionManager({
                             {column.key === "image" ? (
                               value ? (
                                 <div className="relative h-12 w-16 overflow-hidden rounded-md border border-white/10 bg-white/5">
-                                  <Image
+                                  <EncryptedImage
                                     src={typeof item.image === "string" ? imageSrc(item.image) : ""}
                                     alt={`${details.singular} image`}
                                     fill

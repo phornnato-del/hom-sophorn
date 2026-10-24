@@ -1,3 +1,4 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import { prisma } from "@/lib/prisma";
 import { isObjectId } from "@/lib/validate";
 import {
@@ -18,7 +19,7 @@ type MfaRequest = {
   code?: string;
 };
 
-export async function POST(req: Request, { params }: RouteContext) {
+async function postHandler(req: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
     if (!isObjectId(id)) return fail("Invalid id format", 400);
@@ -64,3 +65,5 @@ export async function POST(req: Request, { params }: RouteContext) {
     return fail("Unable to update authenticator setup");
   }
 }
+
+export const POST = withApiEncryption(postHandler);

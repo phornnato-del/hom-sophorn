@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import EncryptedImage from "@/shared/ui/EncryptedImage";
 import {
   ArrowUpRight,
   CheckCircle2,
@@ -249,7 +249,7 @@ function DashboardOverview() {
               {dashboard.recentProjects.map((project) => (
                 <div key={project.id} className="flex items-center gap-4 px-5 py-4 sm:px-6">
                   <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
-                    <Image src={imageSrc(project.image)} alt="" fill unoptimized sizes="64px" className="object-cover" />
+                    <EncryptedImage src={imageSrc(project.image)} alt="" fill unoptimized sizes="64px" className="object-cover" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{project.title}</p>

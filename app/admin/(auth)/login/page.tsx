@@ -6,6 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { profile } from "@/data/portfolio";
+import { encryptedFetch } from "@/lib/encrypted-fetch";
 
 export default function LoginPage() {
   return (
@@ -39,7 +40,7 @@ function LoginForm() {
 
     const formData = new FormData(event.currentTarget);
     try {
-      const response = await fetch("/api/admin/login", {
+      const response = await encryptedFetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(

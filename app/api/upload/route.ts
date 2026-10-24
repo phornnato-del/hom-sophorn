@@ -1,3 +1,4 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { ALLOWED_FOLDERS } from "@/lib/folders";
@@ -5,7 +6,7 @@ import { ALLOWED_FOLDERS } from "@/lib/folders";
 const MAX_SIZE = 4 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -38,3 +39,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }
+
+export const POST = withApiEncryption(postHandler);

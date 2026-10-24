@@ -1,3 +1,4 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import { AboutRequest } from "@/feature/api/about/type/AboutReques";
 import { getErrorMessage, isPrismaError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
@@ -19,7 +20,7 @@ const aboutFields = {
   createdAt: true,
 } as const;
 
-export async function GET(_req: Request, { params }: RouteContext) {
+async function getHandler(_req: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
     if (!isObjectId(id)) return fail("Invalid id format", 400);
@@ -37,7 +38,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
   }
 }
 
-export async function POST(req: Request, { params }: RouteContext) {
+async function postHandler(req: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
     if (!isObjectId(id)) return fail("Invalid id format", 400);
@@ -70,7 +71,7 @@ export async function POST(req: Request, { params }: RouteContext) {
   }
 }
 
-export async function DELETE(_req: Request, { params }: RouteContext) {
+async function deleteHandler(_req: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
     if (!isObjectId(id)) return fail("Invalid id format", 400);
@@ -85,3 +86,7 @@ export async function DELETE(_req: Request, { params }: RouteContext) {
     return fail(getErrorMessage(err));
   }
 }
+
+export const GET = withApiEncryption(getHandler);
+export const POST = withApiEncryption(postHandler);
+export const DELETE = withApiEncryption(deleteHandler);

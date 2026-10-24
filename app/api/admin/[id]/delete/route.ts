@@ -1,3 +1,4 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import { del } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { ok, fail } from "@/lib/response";
@@ -8,7 +9,7 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-export async function POST(_req: Request, { params }: RouteContext) {
+async function postHandler(_req: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
     if (!isObjectId(id)) return fail("Invalid id format", 400);
@@ -41,3 +42,5 @@ export async function POST(_req: Request, { params }: RouteContext) {
     return fail(getErrorMessage(err));
   }
 }
+
+export const POST = withApiEncryption(postHandler);

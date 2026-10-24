@@ -1,3 +1,4 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import { AboutRequest } from "@/feature/api/about/type/AboutReques";
 import { getErrorMessage } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
@@ -13,7 +14,7 @@ const aboutFields = {
   createdAt: true,
 } as const;
 
-export async function GET(req: Request) {
+async function getHandler(req: Request) {
   try {
     const parsed = parsePaginationParams(req.url);
     if ("error" in parsed) return fail(parsed.error, 400);
@@ -46,7 +47,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   try {
     const { tag, title, desc, Lanuage } = (await req.json()) as AboutRequest;
 
@@ -65,3 +66,6 @@ export async function POST(req: Request) {
     return fail(getErrorMessage(error));
   }
 }
+
+export const GET = withApiEncryption(getHandler);
+export const POST = withApiEncryption(postHandler);

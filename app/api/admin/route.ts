@@ -1,3 +1,4 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { ok, fail } from "@/lib/response";
@@ -15,7 +16,7 @@ import {
 import { hasTokenSecret } from "@/lib/admin-auth";
 
 
-export async function GET(req: Request) {
+async function getHandler(req: Request) {
   try {
     const parsed = parsePaginationParams(req.url);
     if ("error" in parsed) return fail(parsed.error, 400);
@@ -46,7 +47,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   try {
     if (!hasTokenSecret()) {
       return fail("Admin token signing secret is not configured on the server", 503);
@@ -94,3 +95,6 @@ export async function POST(req: Request) {
     return fail(getErrorMessage(err));
   }
 }
+
+export const GET = withApiEncryption(getHandler);
+export const POST = withApiEncryption(postHandler);

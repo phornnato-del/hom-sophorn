@@ -1,3 +1,4 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import { getErrorMessage } from "@/lib/errors";
 import { paginatedResult, parsePaginationParams } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
@@ -5,7 +6,7 @@ import { fail, ok } from "@/lib/response";
 import { getTaskLocalDate } from "@/lib/task-reminders";
 import { daysBetweenDates, parseTaskCreateInput } from "@/lib/task-validation";
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   try {
     const parsed = parsePaginationParams(request.url);
     if ("error" in parsed) return fail(parsed.error, 400);
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   try {
     let body: unknown;
     try {
@@ -66,3 +67,6 @@ export async function POST(request: Request) {
     return fail(getErrorMessage(error));
   }
 }
+
+export const GET = withApiEncryption(getHandler);
+export const POST = withApiEncryption(postHandler);

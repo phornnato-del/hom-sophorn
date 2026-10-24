@@ -1,3 +1,4 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import { ContactRequest } from "@/feature/api/contact/type/ContactRequest"
 import { getErrorMessage } from "@/lib/errors"
 import { prisma } from "@/lib/prisma"
@@ -10,7 +11,7 @@ const contactSelect = {
   link: true,
 }
 
-export async function GET(req: Request) {
+async function getHandler(req: Request) {
   try {
     const parsed = parsePaginationParams(req.url)
     if ("error" in parsed) return fail(parsed.error, 400)
@@ -41,7 +42,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   try {
     const { type, link } = (await req.json()) as ContactRequest
 
@@ -60,3 +61,6 @@ export async function POST(req: Request) {
     return fail(getErrorMessage(error))
   }
 }
+
+export const GET = withApiEncryption(getHandler);
+export const POST = withApiEncryption(postHandler);

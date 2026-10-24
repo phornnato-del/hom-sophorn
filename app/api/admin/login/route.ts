@@ -1,3 +1,4 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
@@ -25,7 +26,7 @@ type LoginBody = {
   code?: string;
 };
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   if (!hasTokenSecret()) {
     return fail("Admin token signing secret is not configured on the server", 503);
   }
@@ -143,7 +144,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function DELETE() {
+async function deleteHandler() {
   const response = NextResponse.json({ code: 200, message: "Logged out", data: null });
   for (const cookie of [ADMIN_SESSION_COOKIE, ADMIN_MFA_COOKIE]) {
     response.cookies.set(cookie, "", {
@@ -156,3 +157,6 @@ export async function DELETE() {
   }
   return response;
 }
+
+export const POST = withApiEncryption(postHandler);
+export const DELETE = withApiEncryption(deleteHandler);

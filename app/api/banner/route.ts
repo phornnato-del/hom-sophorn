@@ -1,3 +1,4 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import { BannerRequest } from "@/feature/api/banner/type/BannerRequest"
 import { getErrorMessage } from "@/lib/errors"
 import { prisma } from "@/lib/prisma"
@@ -5,7 +6,7 @@ import { fail, ok } from "@/lib/response"
 import { paginatedResult, parsePaginationParams } from "@/lib/pagination"
 import { withImageUrl } from "@/lib/withImageUrl"
 
-export async function GET(req: Request) {
+async function getHandler(req: Request) {
     try{
         const parsed = parsePaginationParams(req.url)
         if ("error" in parsed) return fail(parsed.error, 400)
@@ -62,3 +63,5 @@ export  async function POST(req: Request) {
         return fail(getErrorMessage(error))
     }
 }
+
+export const GET = withApiEncryption(getHandler);

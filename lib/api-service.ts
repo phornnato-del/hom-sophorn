@@ -1,4 +1,5 @@
 import { startTopLoading } from "@/lib/top-loading";
+import { encryptedFetch } from "@/lib/encrypted-fetch";
 
 export type ApiEnvelope<T> = {
   code: number;
@@ -41,7 +42,7 @@ export async function listApi<T>(
 
   const finishLoading = startTopLoading();
   try {
-    const response = await fetch(`${endpoint}?${params.toString()}`, {
+    const response = await encryptedFetch(`${endpoint}?${params.toString()}`, {
       cache: "no-store",
       signal,
     });
@@ -57,7 +58,7 @@ export async function createApi<T, TBody>(
 ): Promise<T> {
   const finishLoading = startTopLoading();
   try {
-    const response = await fetch(endpoint, {
+    const response = await encryptedFetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -71,7 +72,7 @@ export async function createApi<T, TBody>(
 export async function getApi<T>(endpoint: string): Promise<T> {
   const finishLoading = startTopLoading();
   try {
-    const response = await fetch(endpoint, { cache: "no-store" });
+    const response = await encryptedFetch(endpoint, { cache: "no-store" });
     return await readResponse<T>(response);
   } finally {
     finishLoading();
@@ -86,7 +87,7 @@ export async function updateApi<T, TBody>(
 ): Promise<T> {
   const finishLoading = startTopLoading();
   try {
-    const response = await fetch(`${endpoint}/${encodeURIComponent(id)}`, {
+    const response = await encryptedFetch(`${endpoint}/${encodeURIComponent(id)}`, {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -100,7 +101,7 @@ export async function updateApi<T, TBody>(
 export async function deleteApi(endpoint: string, id: string): Promise<void> {
   const finishLoading = startTopLoading();
   try {
-    const response = await fetch(`${endpoint}/${encodeURIComponent(id)}`, {
+    const response = await encryptedFetch(`${endpoint}/${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
     const body = (await response.json()) as ApiEnvelope<null>;

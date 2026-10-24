@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_SESSION_COOKIE, isValidAdminToken } from "@/lib/admin-auth";
+import { encryptApiError } from "@/lib/api-encryption";
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   if (
     request.nextUrl.pathname === "/admin/login" ||
     request.nextUrl.pathname === "/api/admin/login"
@@ -13,9 +14,10 @@ export function proxy(request: NextRequest) {
   if (isValidAdminToken(token)) return NextResponse.next();
 
   if (request.nextUrl.pathname.startsWith("/api/")) {
-    return NextResponse.json(
-      { code: 401, message: "Not logged in. Please sign in to continue.", data: null },
-      { status: 401 },
+    return encryptApiError(
+      request,
+      401,
+      "Not logged in. Please sign in to continue.",
     );
   }
 

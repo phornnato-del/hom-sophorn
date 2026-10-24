@@ -1,10 +1,11 @@
+import { withApiEncryption } from "@/lib/encrypted-api-handler";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_SESSION_COOKIE, getAdminTokenUserId } from "@/lib/admin-auth";
 import { fail, ok } from "@/lib/response";
 import { imageSrc } from "@/lib/imageSrc";
 
-export async function GET() {
+async function getHandler() {
   const cookieStore = await cookies();
   const userId = getAdminTokenUserId(cookieStore.get(ADMIN_SESSION_COOKIE)?.value);
   if (!userId) return fail("Not logged in. Please sign in to continue.", 401);
@@ -25,3 +26,5 @@ export async function GET() {
     return fail("Unable to load admin profile");
   }
 }
+
+export const GET = withApiEncryption(getHandler);
