@@ -18,6 +18,7 @@ import {
   verifyMfaCode,
 } from "@/lib/admin-mfa";
 import { fail, ok } from "@/lib/response";
+import { checkAdminLoginRateLimit } from "@/lib/rate-limit";
 
 type LoginBody = {
   name?: string;
@@ -27,6 +28,13 @@ type LoginBody = {
 };
 
 async function postHandler(req: Request) {
+  const rateLimit = checkAdminLoginRateLimit(req);
+  if (!rateLimit.allowed) {
+    const response = fail("Too many sign-in requests. Please try again later.", 429);
+    response.headers.set("Retry-After", String(rateLimit.retryAfter));
+    return response;
+  }
+
   if (!hasTokenSecret()) {
     return fail("Admin token signing secret is not configured on the server", 503);
   }
