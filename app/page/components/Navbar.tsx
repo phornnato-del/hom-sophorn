@@ -33,25 +33,58 @@ export default function Navbar() {
         <button
           className="md:hidden"
           onClick={() => setOpen(!open)}
-          aria-label="Toggle menu"
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open}
+          aria-controls="mobile-navigation"
         >
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>
       </nav>
 
       {open && (
-        <div className="glass mx-auto mt-2 w-[92%] max-w-7xl rounded-3xl p-5 md:hidden">
-          <ul className="flex flex-col gap-4 text-center">
-            {links.map((l) => (
-              <li key={l.href}>
-                <a href={l.href} onClick={() => setOpen(false)}>
-                  {l.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <button
+          className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-sm md:hidden"
+          onClick={() => setOpen(false)}
+          aria-label="Close menu"
+        />
       )}
+
+      <aside
+        id="mobile-navigation"
+        className={`glass fixed inset-y-0 right-0 z-[60] flex w-[min(85vw,22rem)] flex-col rounded-l-3xl p-6 transition-transform duration-300 ease-out md:hidden ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+        aria-hidden={!open}
+        inert={!open}
+      >
+        <div className="mb-12 flex items-center justify-between">
+          <a href="#" className="font-bold tracking-tight" onClick={() => setOpen(false)}>
+            {profile.name}
+            <span className="text-neon">.</span>
+          </a>
+          <button
+            onClick={() => setOpen(false)}
+            aria-label="Close menu"
+            className="rounded-full p-2 transition hover:bg-white/10"
+          >
+            <X size={22} />
+          </button>
+        </div>
+
+        <ul className="flex flex-col gap-7 text-lg text-white/85">
+          {links.map((l) => (
+            <li key={l.href}>
+              <a
+                href={l.href}
+                onClick={() => setOpen(false)}
+                className="block transition hover:text-neon"
+              >
+                {l.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </aside>
     </header>
   );
 }
