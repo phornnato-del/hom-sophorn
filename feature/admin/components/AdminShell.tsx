@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import {
   AlignLeft,
-  AtSign,
   ChevronLeft,
   CircleUserRound,
   ClipboardList,
   FolderKanban,
   LayoutDashboard,
+  LogOut,
   Menu,
   MessageSquareText,
   PanelTop,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { profile } from "@/data/portfolio";
+import { getApi } from "@/lib/api-service";
 
 const navigation = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -31,10 +33,56 @@ const navigation = [
   { label: "Settings", href: "/admin/settings", icon: Settings2 },
 ];
 
+type AdminProfile = {
+  name: string | null;
+  imageUrl: string | null;
+};
+
 export default function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
   const currentPage = navigation.find((item) => item.href === pathname) ?? navigation[0];
+
+  async function handleLogout() {
+    setIsLoggingOut(true);
+    setLogoutError("");
+
+    try {
+      const response = await fetch("/api/admin/login", { method: "DELETE" });
+      if (!response.ok) {
+        throw new Error("Unable to sign out. Please try again.");
+      }
+
+      router.replace("/admin/login");
+      router.refresh();
+    } catch (error: unknown) {
+      console.error("Unable to sign out", error);
+      setLogoutError(
+        error instanceof Error ? error.message : "Unable to sign out. Please try again.",
+      );
+      setIsLoggingOut(false);
+    }
+  }
+
+  useEffect(() => {
+    getApi<AdminProfile>("/api/admin/me")
+      .then(setAdminProfile)
+      .catch((error: unknown) => {
+        console.error("Unable to load signed-in admin profile", error);
+      });
+  }, []);
+
+  const displayName = adminProfile?.name?.trim() || profile.name;
+  const initials = displayName
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 
   return (
     <div className="min-h-screen text-white">
@@ -53,12 +101,23 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       >
         <div className="flex items-center justify-between px-2">
           <Link href="/admin" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-violet-400 to-fuchsia-400 text-sm font-bold text-[#170d28]">
-              HS
+            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br from-violet-400 to-fuchsia-400 text-sm font-bold text-[#170d28]">
+              {adminProfile?.imageUrl ? (
+                <Image
+                  src={adminProfile.imageUrl}
+                  alt={`${displayName} profile photo`}
+                  fill
+                  unoptimized
+                  sizes="40px"
+                  className="object-cover"
+                />
+              ) : (
+                initials
+              )}
             </span>
             <span>
-              <span className="block text-sm font-semibold">Studio Panel</span>
-              <span className="mt-0.5 block text-xs text-white/40">Portfolio admin</span>
+              <span className="block text-sm font-semibold">{displayName}</span>
+              <span className="mt-0.5 block text-xs text-white/40">Admin Shell</span>
             </span>
           </Link>
           <button
@@ -99,15 +158,39 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
         <div className="glass rounded-2xl p-3">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-300/15 text-xs font-semibold text-lilac">
-              HS
+            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-violet-300/15 text-xs font-semibold text-lilac">
+              {adminProfile?.imageUrl ? (
+                <Image
+                  src={adminProfile.imageUrl}
+                  alt={`${displayName} profile photo`}
+                  fill
+                  unoptimized
+                  sizes="36px"
+                  className="object-cover"
+                />
+              ) : (
+                initials
+              )}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{profile.name}</p>
+              <p className="truncate text-sm font-medium">{displayName}</p>
               <p className="mt-0.5 truncate text-xs text-white/40">Workspace owner</p>
             </div>
-            <AtSign className="text-white/35" size={15} />
           </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/65 transition hover:border-red-300/25 hover:bg-red-400/8 hover:text-red-200 disabled:cursor-wait disabled:opacity-50"
+          >
+            <LogOut size={16} />
+            {isLoggingOut ? "Signing out..." : "Log out"}
+          </button>
+          {logoutError && (
+            <p role="alert" className="mt-2 text-xs text-red-300">
+              {logoutError}
+            </p>
+          )}
         </div>
       </aside>
 

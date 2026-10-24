@@ -31,12 +31,12 @@ export function createAdminToken(userId: string, lifetimeSeconds: number) {
   return `${unsignedToken}.${signature}`;
 }
 
-export function isValidAdminToken(token: string | undefined) {
+export function getAdminTokenUserId(token: string | undefined): string | null {
   const secret = getTokenSecret();
-  if (!secret || !token) return false;
+  if (!secret || !token) return null;
 
   const parts = token.split(".");
-  if (parts.length !== 3) return false;
+  if (parts.length !== 3) return null;
 
   const [header, payload, signature] = parts;
   const expectedSignature = createHmac("sha256", secret)
@@ -47,26 +47,30 @@ export function isValidAdminToken(token: string | undefined) {
   try {
     suppliedSignature = Buffer.from(signature, "base64url");
   } catch {
-    return false;
+    return null;
   }
   if (
     suppliedSignature.length !== expectedSignature.length ||
     !timingSafeEqual(suppliedSignature, expectedSignature)
   ) {
-    return false;
+    return null;
   }
 
   try {
     const decodedHeader = JSON.parse(Buffer.from(header, "base64url").toString()) as { alg?: string };
     const decodedPayload = JSON.parse(Buffer.from(payload, "base64url").toString()) as AdminTokenPayload;
-    return (
+    const isValid =
       decodedHeader.alg === "HS256" &&
       typeof decodedPayload.sub === "string" &&
       decodedPayload.sub.length > 0 &&
       Number.isInteger(decodedPayload.exp) &&
-      decodedPayload.exp > Math.floor(Date.now() / 1000)
-    );
+      decodedPayload.exp > Math.floor(Date.now() / 1000);
+    return isValid ? decodedPayload.sub : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function isValidAdminToken(token: string | undefined) {
+  return getAdminTokenUserId(token) !== null;
 }
