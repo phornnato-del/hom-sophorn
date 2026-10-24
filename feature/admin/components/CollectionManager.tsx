@@ -1,14 +1,17 @@
 "use client";
 
 import Image from "next/image";
+import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   ChevronLeft,
   ChevronRight,
   ImagePlus,
+  KeyRound,
   Pencil,
   Plus,
   Search,
+  ShieldCheck,
   Trash2,
   X,
 } from "lucide-react";
@@ -56,6 +59,7 @@ const collections: Record<AdminCollectionKey, {
       { key: "name", label: "Name" },
       { key: "email", label: "Email" },
       { key: "role", label: "Role" },
+      { key: "mfaEnabled", label: "Authenticator" },
     ],
   },
   hero: {
@@ -161,6 +165,10 @@ export default function CollectionManager({
   const [imagePreview, setImagePreview] = useState("");
   const [deletingId, setDeletingId] = useState("");
   const [values, setValues] = useState<Record<string, string>>({});
+  const [mfaSetup, setMfaSetup] = useState<{ id: string; name: string; uri: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaError, setMfaError] = useState("");
+  const [mfaSaving, setMfaSaving] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -217,7 +225,16 @@ export default function CollectionManager({
       if (activeForm === "edit" && editingItem) {
         await updateAdminItem(collection, editingItem, body);
       } else {
-        await createAdminItem(collection, body);
+        const created = await createAdminItem(collection, body);
+        if (collection === "admin" && typeof created.mfaSetupUri === "string") {
+          setMfaSetup({
+            id: created.id,
+            name: typeof created.name === "string" ? created.name : "New admin",
+            uri: created.mfaSetupUri,
+          });
+          setMfaCode("");
+          setMfaError("");
+        }
       }
       setValues({});
       setActiveForm(null);
@@ -242,12 +259,13 @@ export default function CollectionManager({
 
   function startEdit(item: AdminCollectionItem) {
     setEditingItem(item);
-    setValues(Object.fromEntries(
-      details.fields.map((field) => [
-        field.key,
-        field.key === "password" ? "" : item[field.key] ?? "",
-      ]),
-    ));
+    const nextValues: Record<string, string> = {};
+    for (const field of details.fields) {
+      const value = item[field.key];
+      nextValues[field.key] =
+        field.key !== "password" && typeof value === "string" ? value : "";
+    }
+    setValues(nextValues);
     setImagePreview(typeof item.image === "string" ? imageSrc(item.image) : "");
     setCreateError("");
     setActiveForm("edit");
@@ -292,6 +310,68 @@ export default function CollectionManager({
       setActionError(error instanceof Error ? error.message : "Unable to delete record.");
     } finally {
       setDeletingId("");
+    }
+  }
+
+  async function beginMfaSetup(item: AdminCollectionItem) {
+    if (
+      item.mfaEnabled === true &&
+      !window.confirm(
+        `Reset the authenticator for ${typeof item.name === "string" ? item.name : "this admin"}? Their current authenticator will stop working.`,
+      )
+    ) {
+      return;
+    }
+
+    setMfaError("");
+    setActionError("");
+    try {
+      const response = await fetch(`/api/admin/${encodeURIComponent(item.id)}/mfa`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const result = (await response.json()) as {
+        message?: string;
+        data?: { otpauthUrl?: string };
+      };
+      if (!response.ok || !result.data?.otpauthUrl) {
+        throw new Error(result.message || "Unable to start authenticator setup.");
+      }
+
+      setMfaSetup({
+        id: item.id,
+        name: typeof item.name === "string" ? item.name : "Admin",
+        uri: result.data.otpauthUrl,
+      });
+      setMfaCode("");
+    } catch (error: unknown) {
+      setActionError(error instanceof Error ? error.message : "Unable to start authenticator setup.");
+    }
+  }
+
+  async function verifyMfaSetup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!mfaSetup) return;
+    setMfaSaving(true);
+    setMfaError("");
+    try {
+      const response = await fetch(`/api/admin/${encodeURIComponent(mfaSetup.id)}/mfa`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "verify", code: mfaCode }),
+      });
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) throw new Error(result.message || "Unable to verify authenticator code.");
+
+      setMfaSetup(null);
+      setMfaCode("");
+      setLoading(true);
+      setRefreshKey((current) => current + 1);
+    } catch (error: unknown) {
+      setMfaError(error instanceof Error ? error.message : "Unable to verify authenticator code.");
+    } finally {
+      setMfaSaving(false);
     }
   }
 
@@ -486,7 +566,11 @@ export default function CollectionManager({
                                   />
                                 </div>
                               ) : <span className="text-white/35">—</span>
-                            ) : value && (column.key === "Lanuage" || column.key === "technology") ? (
+                            ) : column.key === "mfaEnabled" ? (
+                              <span className={`rounded-full px-2.5 py-1 text-xs ${value === true ? "bg-emerald-300/10 text-emerald-200" : "bg-amber-300/10 text-amber-200"}`}>
+                                {value === true ? "Enabled" : "Setup required"}
+                              </span>
+                            ) : typeof value === "string" && value && (column.key === "Lanuage" || column.key === "technology") ? (
                               <div className="flex flex-wrap gap-1.5">
                                 {value.split(",").map((entry) => entry.trim()).filter(Boolean).map((entry, index) => (
                                   <span key={`${entry}-${index}`} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-lilac">
@@ -495,13 +579,24 @@ export default function CollectionManager({
                                 ))}
                               </div>
                             ) : (
-                              <span className="line-clamp-2 break-words">{value || "—"}</span>
+                              <span className="line-clamp-2 break-words">{typeof value === "string" ? value || "—" : "—"}</span>
                             )}
                           </td>
                         );
                       })}
                       <td className="px-5 py-4 text-right sm:px-6">
                         <div className="inline-flex items-center gap-1">
+                          {collection === "admin" && (
+                            <button
+                              type="button"
+                              aria-label={`${item.mfaEnabled === true ? "Reset" : "Set up"} authenticator for ${typeof item.name === "string" ? item.name : "admin"}`}
+                              title={item.mfaEnabled === true ? "Reset authenticator" : "Set up authenticator"}
+                              onClick={() => void beginMfaSetup(item)}
+                              className="rounded-lg p-2 text-white/50 transition hover:bg-emerald-300/10 hover:text-emerald-200"
+                            >
+                              {item.mfaEnabled === true ? <KeyRound size={16} /> : <ShieldCheck size={16} />}
+                            </button>
+                          )}
                           <button
                             type="button"
                             aria-label={`Edit ${details.singular}`}
@@ -552,6 +647,67 @@ export default function CollectionManager({
           </>
         )}
       </section>
+
+      {mfaSetup && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mfa-dialog-title"
+            className="glass my-auto w-full max-w-md rounded-3xl p-6 sm:p-8"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neon">Two-step verification</p>
+                <h2 id="mfa-dialog-title" className="mt-2 text-xl font-semibold">
+                  Set up {mfaSetup.name}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-white/55">
+                  Scan with Google Authenticator or another authenticator app, then enter its current 6-digit code.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMfaSetup(null)}
+                aria-label="Close authenticator setup"
+                className="rounded-lg p-2 text-white/55 transition hover:bg-white/8 hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="mx-auto my-6 flex w-fit rounded-2xl bg-white p-4">
+              <QRCodeSVG value={mfaSetup.uri} size={208} level="M" />
+            </div>
+            <form onSubmit={verifyMfaSetup} className="space-y-4">
+              <label htmlFor="admin-mfa-code" className="block text-sm font-medium text-white/80">
+                6-digit authenticator code
+              </label>
+              <input
+                id="admin-mfa-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                value={mfaCode}
+                onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                required
+                placeholder="000000"
+                className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-center text-lg tracking-[0.4em] text-white outline-none placeholder:text-white/30 focus:border-lilac/50"
+              />
+              {mfaError && <p role="alert" className="text-sm text-rose-200">{mfaError}</p>}
+              <button
+                type="submit"
+                disabled={mfaSaving}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-400 px-4 py-3 text-sm font-semibold text-[#160e23] transition hover:bg-violet-300 disabled:cursor-wait disabled:opacity-60"
+              >
+                <ShieldCheck size={16} />
+                {mfaSaving ? "Verifying..." : "Verify and enable"}
+              </button>
+            </form>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

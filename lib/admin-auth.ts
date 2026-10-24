@@ -5,7 +5,10 @@ export const ADMIN_SESSION_COOKIE = "admin_token";
 type AdminTokenPayload = {
   sub: string;
   exp: number;
+  purpose?: "session" | "mfa-pending";
 };
+
+export const ADMIN_MFA_COOKIE = "admin_mfa_pending";
 
 function getTokenSecret() {
   return process.env.ADMIN_TOKEN_SECRET;
@@ -15,7 +18,11 @@ export function hasTokenSecret() {
   return Boolean(getTokenSecret());
 }
 
-export function createAdminToken(userId: string, lifetimeSeconds: number) {
+export function createAdminToken(
+  userId: string,
+  lifetimeSeconds: number,
+  purpose: AdminTokenPayload["purpose"] = "session",
+) {
   const secret = getTokenSecret();
   if (!secret) throw new Error("Admin token signing secret is not configured");
 
@@ -23,6 +30,7 @@ export function createAdminToken(userId: string, lifetimeSeconds: number) {
   const payload: AdminTokenPayload = {
     sub: userId,
     exp: Math.floor(Date.now() / 1000) + lifetimeSeconds,
+    purpose,
   };
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const unsignedToken = `${header}.${encodedPayload}`;
@@ -31,7 +39,10 @@ export function createAdminToken(userId: string, lifetimeSeconds: number) {
   return `${unsignedToken}.${signature}`;
 }
 
-export function getAdminTokenUserId(token: string | undefined): string | null {
+export function getAdminTokenUserId(
+  token: string | undefined,
+  purpose: AdminTokenPayload["purpose"] = "session",
+): string | null {
   const secret = getTokenSecret();
   if (!secret || !token) return null;
 
@@ -64,7 +75,9 @@ export function getAdminTokenUserId(token: string | undefined): string | null {
       typeof decodedPayload.sub === "string" &&
       decodedPayload.sub.length > 0 &&
       Number.isInteger(decodedPayload.exp) &&
-      decodedPayload.exp > Math.floor(Date.now() / 1000);
+      decodedPayload.exp > Math.floor(Date.now() / 1000) &&
+      (decodedPayload.purpose === purpose ||
+        (purpose === "session" && decodedPayload.purpose === undefined));
     return isValid ? decodedPayload.sub : null;
   } catch {
     return null;

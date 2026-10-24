@@ -7,6 +7,12 @@ import { UserRequest } from "@/feature/api/admin/type/Request";
 import { withImageUrl } from "@/lib/withImageUrl";
 import { paginatedResult, parsePaginationParams } from "@/lib/pagination";
 import { isAllowedImagePath } from "@/lib/folders";
+import {
+  createMfaOtpAuthUrl,
+  encryptMfaSecret,
+  generateMfaSecret,
+} from "@/lib/admin-mfa";
+import { hasTokenSecret } from "@/lib/admin-auth";
 
 
 export async function GET(req: Request) {
@@ -42,6 +48,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    if (!hasTokenSecret()) {
+      return fail("Admin token signing secret is not configured on the server", 503);
+    }
     const { email, name, password, image } = (await req.json()) as UserRequest;
 
     if (!email || !password) {
@@ -56,17 +65,27 @@ export async function POST(req: Request) {
       return fail("Invalid image path or URL", 400);
     }
 
+    const secret = generateMfaSecret();
     const user = await prisma.user.create({
       data: {
         email,
         name,
         image: image || null,
         password: await bcrypt.hash(password, 10),
+        mfaSecret: encryptMfaSecret(secret),
+        mfaEnabled: false,
       },
       select: publicUserFields,
     });
 
-    return ok(user, "User created", 201);
+    return ok(
+      {
+        ...user,
+        mfaSetupUri: createMfaOtpAuthUrl(secret, name?.trim() || email),
+      },
+      "User created. Verify an authenticator code to activate this account.",
+      201,
+    );
   } catch (err: unknown) {
     console.error(err);
     if (isPrismaError(err) && err.code === "P2002") {

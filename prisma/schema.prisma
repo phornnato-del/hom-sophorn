@@ -21,6 +21,8 @@ model User {
   password  String
   role      String   @default("admin")
   image     String?
+  mfaSecret  String?
+  mfaEnabled Boolean  @default(false)
   createdAt DateTime @default(now())
 }
 

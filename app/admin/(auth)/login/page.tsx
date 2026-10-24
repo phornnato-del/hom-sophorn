@@ -2,6 +2,7 @@
 
 import { FormEvent, Suspense, useState } from "react";
 import { ArrowRight, Eye, EyeOff, Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { profile } from "@/data/portfolio";
@@ -26,6 +27,10 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requiresMfa, setRequiresMfa] = useState(false);
+  const [setupUri, setSetupUri] = useState("");
+  const [code, setCode] = useState("");
+  const [remember, setRemember] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,16 +42,38 @@ function LoginForm() {
       const response = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.get("name"),
-          password: formData.get("password"),
-          remember: formData.get("remember") === "on",
-        }),
+        body: JSON.stringify(
+          requiresMfa
+            ? { code, remember }
+            : {
+                name: formData.get("name"),
+                password: formData.get("password"),
+                remember: formData.get("remember") === "on",
+              },
+        ),
       });
-      const result = (await response.json()) as { message?: string };
+      const result = (await response.json()) as {
+        message?: string;
+        data?: {
+          requiresMfa?: boolean;
+          setupRequired?: boolean;
+          otpauthUrl?: string;
+        };
+      };
 
       if (!response.ok) {
         setMessage(result.message ?? "Unable to sign in.");
+        return;
+      }
+
+      if (!requiresMfa && result.data?.requiresMfa) {
+        setRequiresMfa(true);
+        setSetupUri(result.data.otpauthUrl ?? "");
+        setMessage(
+          result.data.setupRequired
+            ? "Scan the QR code, then enter the 6-digit code from your authenticator app."
+            : "Enter the 6-digit code from your authenticator app.",
+        );
         return;
       }
 
@@ -109,68 +136,128 @@ function LoginForm() {
           </div>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neon">Admin access</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight">Sign in</h2>
-            <p className="mt-2 text-sm text-white/55">Enter your details to continue.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neon">
+              {requiresMfa ? "Two-step verification" : "Admin access"}
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight">
+              {requiresMfa ? (setupUri ? "Set up authenticator" : "Verify it’s you") : "Sign in"}
+            </h2>
+            <p className="mt-2 text-sm text-white/55">
+              {requiresMfa
+                ? setupUri
+                  ? "Scan this QR code with Google Authenticator or another TOTP app."
+                  : "Enter the current code from your authenticator app."
+                : "Enter your details to continue."}
+            </p>
           </div>
 
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="name" className="mb-2 block text-sm font-medium text-white/80">
-                Name
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                autoComplete="username"
-                placeholder="Admin name"
-                required
-                className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-lilac/50 focus:ring-2 focus:ring-violet-400/15"
-              />
-            </div>
+            {!requiresMfa ? (
+              <>
+                <div>
+                  <label htmlFor="name" className="mb-2 block text-sm font-medium text-white/80">
+                    Name
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="Admin name"
+                    required
+                    className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-lilac/50 focus:ring-2 focus:ring-violet-400/15"
+                  />
+                </div>
 
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <label htmlFor="password" className="block text-sm font-medium text-white/80">
-                  Password
+                <div>
+                  <label htmlFor="password" className="mb-2 block text-sm font-medium text-white/80">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      placeholder="Enter your password"
+                      required
+                      className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 pr-12 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-lilac/50 focus:ring-2 focus:ring-violet-400/15"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-white/45 transition hover:text-white"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <label className="flex cursor-pointer items-center gap-2.5 text-sm text-white/60">
+                  <input
+                    type="checkbox"
+                    name="remember"
+                    checked={remember}
+                    onChange={(event) => setRemember(event.target.checked)}
+                    className="h-4 w-4 accent-violet-400"
+                  />
+                  Keep me signed in
                 </label>
-              </div>
-              <div className="relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  placeholder="Enter your password"
-                  required
-                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 pr-12 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-lilac/50 focus:ring-2 focus:ring-violet-400/15"
-                />
+              </>
+            ) : (
+              <>
+                {setupUri && (
+                  <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white p-4">
+                    <QRCodeSVG value={setupUri} size={200} level="M" />
+                    <p className="text-center text-xs text-black/70">
+                      Scan with Google Authenticator, Authy, or another authenticator app.
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <label htmlFor="code" className="mb-2 block text-sm font-medium text-white/80">
+                    6-digit authenticator code
+                  </label>
+                  <input
+                    id="code"
+                    name="code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    value={code}
+                    onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="000000"
+                    required
+                    className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-center text-lg tracking-[0.4em] text-white outline-none transition placeholder:text-white/30 focus:border-lilac/50 focus:ring-2 focus:ring-violet-400/15"
+                  />
+                </div>
                 <button
                   type="button"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-white/45 transition hover:text-white"
+                  onClick={() => {
+                    setRequiresMfa(false);
+                    setSetupUri("");
+                    setCode("");
+                    setMessage("");
+                  }}
+                  className="w-full text-sm text-white/50 transition hover:text-white"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  Back to sign in
                 </button>
-              </div>
-            </div>
-
-            <label className="flex cursor-pointer items-center gap-2.5 text-sm text-white/60">
-              <input
-                type="checkbox"
-                name="remember"
-                className="h-4 w-4 accent-violet-400"
-              />
-              Keep me signed in
-            </label>
+              </>
+            )}
 
             <button
               type="submit"
+              disabled={isSubmitting}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-violet-500 to-purple-400 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/35 transition hover:-translate-y-0.5 hover:shadow-violet-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lilac"
             >
-              {isSubmitting ? "Signing in..." : "Sign in"} <ArrowRight size={17} />
+              {isSubmitting
+                ? requiresMfa ? "Verifying..." : "Signing in..."
+                : requiresMfa ? "Verify and continue" : "Sign in"}{" "}
+              <ArrowRight size={17} />
             </button>
             <p role="status" aria-live="polite" className="min-h-5 text-center text-xs text-lilac/80">
               {message}

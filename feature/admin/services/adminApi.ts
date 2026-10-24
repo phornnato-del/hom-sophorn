@@ -16,7 +16,7 @@ export type AdminCollectionKey =
 
 export type AdminCollectionItem = {
   id: string;
-  [key: string]: string | null | undefined;
+  [key: string]: string | boolean | null | undefined;
 };
 
 const endpoints: Record<AdminCollectionKey, string> = {
