@@ -69,10 +69,16 @@ export async function createApi<T, TBody>(
   }
 }
 
-export async function getApi<T>(endpoint: string): Promise<T> {
+export async function getApi<T>(
+  endpoint: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<T> {
   const finishLoading = startTopLoading();
   try {
-    const response = await encryptedFetch(endpoint, { cache: "no-store" });
+    const response = await encryptedFetch(endpoint, {
+      cache: "no-store",
+      signal: options.signal,
+    });
     return await readResponse<T>(response);
   } finally {
     finishLoading();

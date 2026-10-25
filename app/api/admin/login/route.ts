@@ -18,6 +18,7 @@ import {
   verifyMfaCode,
 } from "@/lib/admin-mfa";
 import { fail, ok } from "@/lib/response";
+import { recordAdminLoginAttempt } from "@/lib/admin-login-audit";
 import {
   checkAdminAccessRateLimit,
   checkAdminLoginRateLimit,
@@ -306,5 +307,42 @@ async function deleteHandler() {
   return response;
 }
 
-export const POST = withApiEncryption(postHandler);
+export async function POST(request: Request) {
+  let auditAttemptRecorded = false;
+  const encryptedHandler = withApiEncryption<undefined>(
+    async (decryptedRequest: Request) => {
+      let attemptedUsername: string | null = null;
+      let stage = "request";
+      try {
+        const body: unknown = await decryptedRequest.clone().json();
+        if (typeof body === "object" && body !== null) {
+          if ("code" in body) stage = "mfa";
+          else if ("name" in body || "password" in body) stage = "password";
+          if ("name" in body && typeof body.name === "string") {
+            attemptedUsername = body.name;
+          }
+        }
+      } catch {
+        // Invalid request bodies are still audited with the available request metadata.
+      }
+
+      const response = await postHandler(decryptedRequest);
+      await recordAdminLoginAttempt(
+        decryptedRequest,
+        response,
+        attemptedUsername,
+        stage,
+      );
+      auditAttemptRecorded = true;
+      return response;
+    },
+  );
+
+  const response = await encryptedHandler(request, undefined);
+  if (!auditAttemptRecorded) {
+    await recordAdminLoginAttempt(request, response);
+  }
+  return response;
+}
+
 export const DELETE = withApiEncryption(deleteHandler);

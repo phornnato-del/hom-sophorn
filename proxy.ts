@@ -6,6 +6,7 @@ import {
 import { encryptApiError } from "@/lib/api-encryption";
 import { prisma } from "@/lib/prisma";
 import { checkAdminAccessRateLimit } from "@/lib/rate-limit";
+import { recordAdminLoginAttempt } from "@/lib/admin-login-audit";
 
 function clearAdminSession(response: Response) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
@@ -29,6 +30,9 @@ async function rateLimitedResponse(request: NextRequest, retryAfter: number) {
       );
   response.headers.set("Retry-After", String(retryAfter));
   response.headers.set("Cache-Control", "no-store");
+  if (request.nextUrl.pathname === "/api/admin/login") {
+    await recordAdminLoginAttempt(request, response, null, "request");
+  }
   return response;
 }
 

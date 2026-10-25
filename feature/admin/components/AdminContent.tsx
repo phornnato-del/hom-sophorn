@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { profile } from "@/data/portfolio";
 import CollectionManager from "@/feature/admin/components/CollectionManager";
+import LoginAttemptActivity from "@/feature/admin/components/LoginAttemptActivity";
 import TaskManager from "@/feature/admin/components/TaskManager";
 import { getApi } from "@/lib/api-service";
 import { imageSrc } from "@/lib/imageSrc";
@@ -220,6 +221,8 @@ function DashboardOverview() {
           <button type="button" onClick={() => setRefreshCount((current) => current + 1)} className="font-medium text-white underline decoration-white/30 underline-offset-4">Try again</button>
         </div>
       )}
+
+      <LoginAttemptActivity refreshCount={refreshCount} />
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.85fr]">
         <section className="glass overflow-hidden rounded-2xl">

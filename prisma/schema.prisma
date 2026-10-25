@@ -28,6 +28,26 @@ model User {
   createdAt           DateTime  @default(now())
 }
 
+model AdminLoginAttempt {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  ipAddress         String
+  attemptedUsername String?
+  country           String?
+  region            String?
+  city              String?
+  timezone          String?
+  userAgent         String?
+  requestId         String?
+  stage             String
+  outcome           String
+  statusCode        Int
+  createdAt         DateTime @default(now())
+
+  @@index([ipAddress, createdAt])
+  @@index([attemptedUsername, createdAt])
+  @@index([outcome, createdAt])
+}
+
 model Banner {
   id       String   @id @default(auto()) @map("_id") @db.ObjectId
   tag      String?
