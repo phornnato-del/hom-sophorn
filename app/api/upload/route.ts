@@ -1,4 +1,4 @@
-import { withApiEncryption } from "@/lib/encrypted-api-handler";
+import { withAdminApiEncryption } from "@/lib/admin-api-handler";
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { ALLOWED_FOLDERS } from "@/lib/folders";
@@ -40,4 +40,4 @@ async function postHandler(req: Request) {
   }
 }
 
-export const POST = withApiEncryption(postHandler);
+export const POST = withAdminApiEncryption(postHandler);

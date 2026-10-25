@@ -1,4 +1,5 @@
 import { withApiEncryption } from "@/lib/encrypted-api-handler";
+import { withAdminApiEncryption } from "@/lib/admin-api-handler";
 import { ProjectRequest } from "@/feature/api/project/type/ProjectReuest"
 import { getErrorMessage } from "@/lib/errors"
 import { prisma } from "@/lib/prisma"
@@ -80,4 +81,4 @@ async function postHandler(req: Request) {
 }
 
 export const GET = withApiEncryption(getHandler);
-export const POST = withApiEncryption(postHandler);
+export const POST = withAdminApiEncryption(postHandler);

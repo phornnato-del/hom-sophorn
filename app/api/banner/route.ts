@@ -1,4 +1,5 @@
 import { withApiEncryption } from "@/lib/encrypted-api-handler";
+import { withAdminApiEncryption } from "@/lib/admin-api-handler";
 import { BannerRequest } from "@/feature/api/banner/type/BannerRequest"
 import { getErrorMessage } from "@/lib/errors"
 import { prisma } from "@/lib/prisma"
@@ -42,7 +43,7 @@ async function getHandler(req: Request) {
     }
 }
 
-export  async function POST(req: Request) {
+async function postHandler(req: Request) {
     try {
 
         const { tag, title, slogan, desc, link, name, image } = await req.json() as BannerRequest;
@@ -65,3 +66,4 @@ export  async function POST(req: Request) {
 }
 
 export const GET = withApiEncryption(getHandler);
+export const POST = withAdminApiEncryption(postHandler);

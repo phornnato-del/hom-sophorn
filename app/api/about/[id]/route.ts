@@ -1,4 +1,5 @@
 import { withApiEncryption } from "@/lib/encrypted-api-handler";
+import { withAdminApiEncryption } from "@/lib/admin-api-handler";
 import { AboutRequest } from "@/feature/api/about/type/AboutReques";
 import { getErrorMessage, isPrismaError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
@@ -88,5 +89,5 @@ async function deleteHandler(_req: Request, { params }: RouteContext) {
 }
 
 export const GET = withApiEncryption(getHandler);
-export const POST = withApiEncryption(postHandler);
-export const DELETE = withApiEncryption(deleteHandler);
+export const POST = withAdminApiEncryption<RouteContext>(postHandler);
+export const DELETE = withAdminApiEncryption<RouteContext>(deleteHandler);
