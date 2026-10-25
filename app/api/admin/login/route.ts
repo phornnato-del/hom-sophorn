@@ -94,16 +94,43 @@ async function getAccountLockoutResponse(
 }
 
 async function recordAdminLoginFailure(userId: string) {
+  const now = new Date();
   await prisma.user.updateMany({
     where: {
       id: userId,
       attempts: { lt: MAX_ADMIN_LOGIN_FAILURES },
       OR: [
         { attemptBlockedUntil: null },
-        { attemptBlockedUntil: { lte: new Date() } },
+        { attemptBlockedUntil: { lte: now } },
       ],
     },
     data: { attempts: { increment: 1 } },
+  });
+
+  const admin = await prisma.user.findUnique({
+    where: { id: userId, role: "admin" },
+    select: { attempts: true, attemptBlockedUntil: true },
+  });
+  if (
+    !admin ||
+    admin.attempts < MAX_ADMIN_LOGIN_FAILURES ||
+    (admin.attemptBlockedUntil && admin.attemptBlockedUntil > now)
+  ) {
+    return;
+  }
+
+  await prisma.user.updateMany({
+    where: {
+      id: userId,
+      attempts: { gte: MAX_ADMIN_LOGIN_FAILURES },
+      OR: [
+        { attemptBlockedUntil: null },
+        { attemptBlockedUntil: { lte: now } },
+      ],
+    },
+    data: {
+      attemptBlockedUntil: new Date(now.getTime() + ADMIN_LOGIN_BLOCK_MS),
+    },
   });
 }
 
@@ -241,19 +268,8 @@ async function postHandler(req: Request) {
       }
     }
     if (!authenticatedAdmin) {
-      if (admins.length > 0) {
-        await prisma.user.updateMany({
-          where: {
-            name: name.trim(),
-            role: "admin",
-            attempts: { lt: MAX_ADMIN_LOGIN_FAILURES },
-            OR: [
-              { attemptBlockedUntil: null },
-              { attemptBlockedUntil: { lte: new Date() } },
-            ],
-          },
-          data: { attempts: { increment: 1 } },
-        });
+      for (const admin of admins) {
+        await recordAdminLoginFailure(admin.id);
       }
       return failedLoginResponse(req, "Invalid name or password");
     }
