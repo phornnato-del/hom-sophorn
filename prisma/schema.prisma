@@ -15,15 +15,17 @@ model Photo {
 }
 
 model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  email     String   @unique
-  name      String?
-  password  String
-  role      String   @default("admin")
-  image     String?
-  mfaSecret  String?
-  mfaEnabled Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+  email               String    @unique
+  name                String?
+  password            String
+  role                String    @default("admin")
+  image               String?
+  mfaSecret           String?
+  mfaEnabled          Boolean   @default(false)
+  attempts            Int       @default(0)
+  attemptBlockedUntil DateTime?
+  createdAt           DateTime  @default(now())
 }
 
 model Banner {
@@ -81,8 +83,8 @@ model Task {
 }
 
 model TaskReminderDelivery {
-  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
-  taskId             String   @db.ObjectId
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  taskId             String    @db.ObjectId
   scheduledDate      String
   reminderDaysBefore Int
   sentAt             DateTime?
