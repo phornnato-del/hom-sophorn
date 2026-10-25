@@ -12,6 +12,9 @@ type LoginAttempt = {
   region: string | null;
   city: string | null;
   timezone: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationSource: string | null;
   userAgent: string | null;
   stage: string;
   outcome: string;
@@ -29,8 +32,8 @@ function attemptLocation(attempt: LoginAttempt) {
     .join(", ");
 }
 
-function mapUrl(location: string) {
-  const query = new URLSearchParams({ q: location });
+function mapUrl(latitude: number, longitude: number) {
+  const query = new URLSearchParams({ q: `${latitude},${longitude}` });
   return `https://www.google.com/maps/search/?${query.toString()}`;
 }
 
@@ -129,6 +132,9 @@ export default function LoginAttemptActivity({
             <tbody className="divide-y divide-white/6">
               {attempts.map((attempt) => {
                 const location = attemptLocation(attempt);
+                const { latitude, longitude } = attempt;
+                const hasCoordinates =
+                  latitude !== null && longitude !== null;
                 return (
                   <tr key={attempt.id} className="align-top text-white/70">
                     <td className="whitespace-nowrap px-5 py-4 text-white/50 sm:px-6">
@@ -143,20 +149,27 @@ export default function LoginAttemptActivity({
                       </p>
                     </td>
                     <td className="px-4 py-4">
-                      {location ? (
+                      {hasCoordinates ? (
                         <a
-                          href={mapUrl(location)}
+                          href={mapUrl(latitude, longitude)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          aria-label={`View approximate location ${location} on Google Maps`}
+                          aria-label={`View approximate IP location at ${latitude}, ${longitude} on Google Maps`}
                           className="inline-flex max-w-48 items-start gap-1.5 text-lilac transition hover:text-white"
                         >
                           <MapPin size={13} className="mt-0.5 shrink-0" />
-                          <span>{location}</span>
+                          <span>
+                            {location || "Approximate IP location"}
+                            <span className="mt-1 block font-mono text-[10px] text-white/40">
+                              {latitude}, {longitude}
+                            </span>
+                          </span>
                           <ExternalLink size={11} className="mt-0.5 shrink-0" />
                         </a>
                       ) : (
-                        <span className="text-white/35">Location unavailable</span>
+                        <span className="text-white/35">
+                          {location || "Coordinates unavailable"}
+                        </span>
                       )}
                       {attempt.timezone && (
                         <p className="mt-1 pl-5 text-[10px] text-white/35">
@@ -191,9 +204,9 @@ export default function LoginAttemptActivity({
         </div>
       )}
       <p className="border-t border-white/8 px-5 py-3 text-[10px] leading-5 text-white/35 sm:px-6">
-        Map locations are approximate and depend on location data provided by
-        your hosting provider. IP and account details are sensitive security
-        data.
+        Coordinates are estimates from IP geolocation, not GPS or an exact
+        physical address. Login IPs are sent to ipwho.is for lookup. IP and
+        account details are sensitive security data.
       </p>
     </section>
   );

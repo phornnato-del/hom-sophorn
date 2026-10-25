@@ -36,6 +36,9 @@ model AdminLoginAttempt {
   region            String?
   city              String?
   timezone          String?
+  latitude          Float?
+  longitude         Float?
+  locationSource    String?
   userAgent         String?
   requestId         String?
   stage             String

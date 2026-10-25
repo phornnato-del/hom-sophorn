@@ -1,3 +1,5 @@
+import { getClientIp } from "@/lib/request-ip";
+
 type RateLimitEntry = {
   count: number;
   resetAt: number;
@@ -31,10 +33,7 @@ const accessStore = (globalForRateLimit.adminAccessRateLimit ??= {
 });
 
 function getClientKey(request: Request): string {
-  const clientIp = request.headers.get("x-real-ip")?.trim()
-    || request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim();
-
-  return clientIp || "unknown";
+  return getClientIp(request);
 }
 
 function cleanupExpiredEntries(rateLimitStore: RateLimitStore, now: number) {
