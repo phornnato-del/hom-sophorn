@@ -159,7 +159,12 @@ export default function LoginAttemptActivity({
                         >
                           <MapPin size={13} className="mt-0.5 shrink-0" />
                           <span>
-                            {location || "Approximate IP location"}
+                            <span className="block text-[10px] uppercase tracking-wide text-white/40">
+                              Approximate IP location
+                            </span>
+                            <span className="mt-0.5 block">
+                              {location || "Estimated area"}
+                            </span>
                             <span className="mt-1 block font-mono text-[10px] text-white/40">
                               {latitude}, {longitude}
                             </span>
@@ -204,9 +209,10 @@ export default function LoginAttemptActivity({
         </div>
       )}
       <p className="border-t border-white/8 px-5 py-3 text-[10px] leading-5 text-white/35 sm:px-6">
-        Coordinates are estimates from IP geolocation, not GPS or an exact
-        physical address. Login IPs are sent to ipwho.is for lookup. IP and
-        account details are sensitive security data.
+        These map pins are IP-geolocation estimates (often an ISP or city
+        center), not GPS or a precise location. Accuracy varies by network and
+        VPN use. Login IPs are sent to ipwho.is for lookup. IP and account
+        details are sensitive security data.
       </p>
     </section>
   );
